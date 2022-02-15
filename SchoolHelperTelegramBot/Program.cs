@@ -12,7 +12,8 @@ public enum UserState
     EnterForm = 1,
     EnterWeek = 2,
     EnterDay = 3,
-    EnterFormToday = 4
+    EnterFormToday = 4,
+    EnterWeekAdmin = 5
 }
 
 class Program
@@ -38,6 +39,7 @@ class Program
         public string Form { get; set; }
         public string Week { get; set; }
         public string Day { get; set; }
+        public int CountOfSignIn { get; set; }
         public UserState State { get; set; }
     }
 
@@ -66,6 +68,7 @@ class Program
                 currentUser = new User()
                 {
                     ChatId = e.Message.Chat.Id,
+                    CountOfSignIn = 0,
                     State = UserState.Basic
                 };
 
@@ -129,6 +132,52 @@ class Program
                 return;
             }
 
+            if (currentUser.State == UserState.Admin)
+            {
+                if (currentUser.CountOfSignIn != 3)
+                {
+                    if (message.Text == "school5")
+                    {
+                        currentUser.State = UserState.EnterWeekAdmin;
+                        await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть неділю");
+                    }
+                    else
+                    {
+                        await _client.SendTextMessageAsync(currentUser.ChatId, $"Залишилось спроб - {3 - currentUser.CountOfSignIn}.");
+                        currentUser.CountOfSignIn++;
+                    }
+                }
+                else if (currentUser.CountOfSignIn == 3)
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Вами було введено багато помилкових паролей.");
+                    currentUser.State = UserState.Basic;
+                }
+
+                return;
+            }
+
+            if (currentUser.State == UserState.EnterWeekAdmin)
+            {
+                byte.TryParse(message.Text, out byte digit);
+
+                if (message.Text.Any(c => char.IsLetter(c)))
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть дійсне значення.");
+                    return;
+                }
+
+                if(digit <= 0 || digit >= 4)
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть значення від 1 до 4.");
+                    return;
+                }
+
+                _week = digit;
+                await _client.SendTextMessageAsync(currentUser.ChatId, $"Неділя змінена на {_week}.");
+                currentUser.State = UserState.Basic;
+                return;
+            }
+
             if (currentUser.State == UserState.Basic)
             {
                 if (message.Text != null && message.Text[0] == '/')
@@ -144,6 +193,11 @@ class Program
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
                             return;
                         case "/admin":
+                            if (currentUser.CountOfSignIn != 3)
+                            {
+                                currentUser.State = UserState.Admin;
+                                await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть пароль");
+                            }
                             return;
                         default:
                             await _client.SendTextMessageAsync(message.Chat.Id, "Не існує такої команди");
