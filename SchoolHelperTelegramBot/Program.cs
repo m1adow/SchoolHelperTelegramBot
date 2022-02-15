@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Args;
-using Telegram.Bot.Types;
+using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SchoolHelperTelegramBot;
@@ -38,7 +38,7 @@ class Program
         Console.ReadKey();
     }
 
-    private static void PrintLog(Message message, User? user)
+    private static void PrintLog(Telegram.Bot.Types.Message message, User? user)
     {
         Console.WriteLine($"{DateTime.Now.TimeOfDay} Message: {message.Text} From: {message.From.Username}({message.From.Id}) State: {user.State}");
     }
@@ -88,10 +88,14 @@ class Program
                 currentUser.Day = message.Text;
                 currentUser.State = UserState.Basic;
 
-                using (Stream stream = System.IO.File.Open($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}_{currentUser.Day}_{currentUser.Week}.png", FileMode.Open))
+                await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
+
+                using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{currentUser.Week}.png"))
                 {
-                    _client.SendPhotoAsync(message.Chat.Id, stream);
+                    InputOnlineFile inputOnlineFile = new(stream);
+                    await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
                 }
+
                 return;
             }
 
@@ -103,7 +107,7 @@ class Program
                     {
                         case "/tabletime":
                             currentUser.State = UserState.EnterForm;
-                            await _client.SendTextMessageAsync(message.Chat.Id, "Виберіть клас", replyMarkup: GetFormButtons());
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
                             return;
                         case "/today":
                             break;
@@ -119,8 +123,10 @@ class Program
         }
         catch (Exception ex)
         {
+            Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine(ex.Message);
-        }        
+            Console.ForegroundColor = ConsoleColor.Gray;
+        }       
     }
 
     private static IReplyMarkup GetFormButtons()
@@ -157,7 +163,7 @@ class Program
         {
             Keyboard = new List<List<KeyboardButton>>
                 {
-                    new List<KeyboardButton>{ new KeyboardButton { Text = "Понеділок" }, new KeyboardButton { Text = "Вівторок" }, new KeyboardButton { Text = "Середа" }, new KeyboardButton { Text = "Четвер" }, new KeyboardButton { Text = "П'ятниця" } }
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Понедiлок" }, new KeyboardButton { Text = "Вiвторок" }, new KeyboardButton { Text = "Середа" }, new KeyboardButton { Text = "Четвер" }, new KeyboardButton { Text = "П'ятниця" } }
                 }
         };
     }
