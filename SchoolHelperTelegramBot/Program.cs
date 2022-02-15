@@ -7,19 +7,30 @@ namespace SchoolHelperTelegramBot;
 
 public enum UserState
 {
+    Admin = -1,
     Basic = 0,
     EnterForm = 1,
     EnterWeek = 2,
-    EnterDay = 3
+    EnterDay = 3,
+    EnterFormToday = 4
 }
 
 class Program
 {
     private static TelegramBotClient? _client;
     private static readonly string _token = "5151427908:AAFbHUIvyt1NQrzpS7mTe3GQIG7TuZHLUY0";
-
+    private static byte _week;
 
     private static List<User> _users = new();
+
+    private static Dictionary<string, string> _days = new Dictionary<string, string>()
+    {
+        ["Monday"] = "Понедiлок",
+        ["Tuesday"] = "Вiвторок",
+        ["Wednesday"] = "Середа",
+        ["Thursday"] = "Четвер",
+        ["Friday"] = "П'ятниця"
+    };
 
     public class User
     {
@@ -32,6 +43,7 @@ class Program
 
     static void Main(string[] args)
     {
+        _week = 1;
         _client = new TelegramBotClient(_token);
         _client.StartReceiving();
         _client.OnMessage += OnMessageHandler;
@@ -99,6 +111,24 @@ class Program
                 return;
             }
 
+            if (currentUser.State == UserState.EnterFormToday)
+            {
+                currentUser.Form = message.Text;
+                currentUser.State = UserState.Basic;
+
+                _days.TryGetValue(DateTime.Now.DayOfWeek.ToString(), out string day);
+
+                await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
+
+                using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{day}_{_week}.png"))
+                {
+                    InputOnlineFile inputOnlineFile = new(stream);
+                    await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
+                }
+
+                return;
+            }
+
             if (currentUser.State == UserState.Basic)
             {
                 if (message.Text != null && message.Text[0] == '/')
@@ -110,9 +140,11 @@ class Program
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
                             return;
                         case "/today":
-                            break;
+                            currentUser.State = UserState.EnterFormToday;
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
+                            return;
                         case "/admin":
-                            break;
+                            return;
                         default:
                             await _client.SendTextMessageAsync(message.Chat.Id, "Не існує такої команди");
                             break;
@@ -126,7 +158,7 @@ class Program
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine(ex.Message);
             Console.ForegroundColor = ConsoleColor.Gray;
-        }       
+        }
     }
 
     private static IReplyMarkup GetFormButtons()
@@ -140,7 +172,7 @@ class Program
                     new List<KeyboardButton>{ new KeyboardButton { Text = "7-А"}, new KeyboardButton { Text = "7-Б" }, new KeyboardButton { Text = "7-В" } },
                     new List<KeyboardButton>{ new KeyboardButton { Text = "8-А"}, new KeyboardButton { Text = "8-Б" }, new KeyboardButton { Text = "8-В" } },
                     new List<KeyboardButton>{ new KeyboardButton { Text = "9-А"}, new KeyboardButton { Text = "9-Б" }, new KeyboardButton { Text = "9-В" } },
-                    new List<KeyboardButton>{ new KeyboardButton { Text = "10-А"}, new KeyboardButton { Text = "10-Б" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "10-А"}, new KeyboardButton { Text = "10-Б" }, new KeyboardButton { Text = "10-В" } },
                     new List<KeyboardButton>{ new KeyboardButton { Text = "11-А"}, new KeyboardButton { Text = "11-Б" } }
                 }
         };
