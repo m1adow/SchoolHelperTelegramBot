@@ -1,5 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Args;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace SchoolHelperTelegramBot;
@@ -29,20 +30,6 @@ class Program
         public UserState State { get; set; }
     }
 
-    /*
-     user1         
-     /setNick
-     jon
-
-
-    // state 0 - ожидает команды \ любой контент
-
-    //state 10 - ожидаем Имя
-    //state 11 - ожидаем Возвраст
-    //state 12 - ожидаем Город 
-     */
-
-
     static void Main(string[] args)
     {
         _client = new TelegramBotClient(_token);
@@ -51,82 +38,89 @@ class Program
         Console.ReadKey();
     }
 
-    private static void PrintLog(Telegram.Bot.Types.Message msg)
+    private static void PrintLog(Message message, User? user)
     {
-        Console.WriteLine($"{msg.From.Username}({msg.From.Id})");
+        Console.WriteLine($"{DateTime.Now.TimeOfDay} Message: {message.Text} From: {message.From.Username}({message.From.Id}) State: {user.State}");
     }
 
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
     {
-        User? CurrentUser = _users.FirstOrDefault(u => u.ChatId == e.Message.Chat.Id);
-
-        if (CurrentUser is null)
+        try
         {
-            CurrentUser = new User()
+            User? currentUser = _users.FirstOrDefault(u => u.ChatId == e.Message.Chat.Id);
+
+            if (currentUser is null)
             {
-                ChatId = e.Message.Chat.Id,
-                State = 0
-            };
-
-            _users.Add(CurrentUser);
-        }
-
-        if (CurrentUser is null) throw new NullReferenceException();
-
-        var message = e.Message;
-        PrintLog(message);
-
-        if (CurrentUser.State == UserState.EnterForm)
-        {
-            CurrentUser.Form = message.Text;
-            CurrentUser.State = UserState.EnterWeek;
-
-            await _client.SendTextMessageAsync(CurrentUser.ChatId, "Виберіть тиждень", replyMarkup: GetWeekButtons());
-            return;
-        }
-
-        if (CurrentUser.State == UserState.EnterWeek)
-        {
-            CurrentUser.Week = message.Text;
-            CurrentUser.State = UserState.EnterDay;
-
-            await _client.SendTextMessageAsync(CurrentUser.ChatId, "Виберіть день", replyMarkup: GetDayButtons());
-            return;
-        }
-
-        if(CurrentUser.State == UserState.EnterDay)
-        {
-            CurrentUser.Day = message.Text;
-            CurrentUser.State = UserState.Basic;
-
-            using (Stream stream = File.Open($@"{Environment.CurrentDirectory}\Resources\{CurrentUser.Form}_{CurrentUser.Day}_{CurrentUser.Week}.png", FileMode.Open))
-            {
-                _client.SendPhotoAsync(message.Chat.Id, stream);
-            }
-            return;
-        }
-
-        if (CurrentUser.State == UserState.Basic)
-        {
-            if (message.Text != null && message.Text[0] == '/')
-            {
-                switch (message.Text)
+                currentUser = new User()
                 {
-                    case "/tabletime":
-                        CurrentUser.State = UserState.EnterForm;
-                        await _client.SendTextMessageAsync(message.Chat.Id, "Виберіть клас", replyMarkup: GetFormButtons());
-                        return;
-                    case "/today":
-                        break;
-                    case "/admin":
-                        break;
-                    default:
-                        await _client.SendTextMessageAsync(message.Chat.Id, "Не існує такої команди");
-                        break;
-                }
+                    ChatId = e.Message.Chat.Id,
+                    State = UserState.Basic
+                };
+
+                _users.Add(currentUser);
             }
-            else await _client.SendTextMessageAsync(message.Chat.Id, "Введіть команду");
+
+            if (currentUser is null) throw new NullReferenceException();
+
+            var message = e.Message;
+            PrintLog(message, currentUser);
+
+            if (currentUser.State == UserState.EnterForm)
+            {
+                currentUser.Form = message.Text;
+                currentUser.State = UserState.EnterWeek;
+
+                await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть тиждень", replyMarkup: GetWeekButtons());
+                return;
+            }
+
+            if (currentUser.State == UserState.EnterWeek)
+            {
+                currentUser.Week = message.Text;
+                currentUser.State = UserState.EnterDay;
+
+                await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть день", replyMarkup: GetDayButtons());
+                return;
+            }
+
+            if (currentUser.State == UserState.EnterDay)
+            {
+                currentUser.Day = message.Text;
+                currentUser.State = UserState.Basic;
+
+                using (Stream stream = System.IO.File.Open($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}_{currentUser.Day}_{currentUser.Week}.png", FileMode.Open))
+                {
+                    _client.SendPhotoAsync(message.Chat.Id, stream);
+                }
+                return;
+            }
+
+            if (currentUser.State == UserState.Basic)
+            {
+                if (message.Text != null && message.Text[0] == '/')
+                {
+                    switch (message.Text)
+                    {
+                        case "/tabletime":
+                            currentUser.State = UserState.EnterForm;
+                            await _client.SendTextMessageAsync(message.Chat.Id, "Виберіть клас", replyMarkup: GetFormButtons());
+                            return;
+                        case "/today":
+                            break;
+                        case "/admin":
+                            break;
+                        default:
+                            await _client.SendTextMessageAsync(message.Chat.Id, "Не існує такої команди");
+                            break;
+                    }
+                }
+                else await _client.SendTextMessageAsync(message.Chat.Id, "Введіть команду");
+            }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }        
     }
 
     private static IReplyMarkup GetFormButtons()
