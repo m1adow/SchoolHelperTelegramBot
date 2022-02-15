@@ -85,7 +85,7 @@ namespace SchoolHelperTelegramBot
                     _day = message.Text;
                     await _client.SendTextMessageAsync(message.Chat.Id, "Ось ваш розклад");
 
-                    using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{_form} {_day} {_week}.png"))
+                    using (Stream stream = File.Open($@"{Environment.CurrentDirectory}\Resources\{_form} {_day} {_week}.png", FileMode.Open))
                     {
                         _client.SendPhotoAsync(message.Chat.Id, stream);
                     }
@@ -96,7 +96,7 @@ namespace SchoolHelperTelegramBot
                 await _client.SendTextMessageAsync(message.Chat.Id, exc.Message);
                 Console.WriteLine(exc.Message);
             }
-           
+
             _client.OnMessage -= OnPostHandler;
             _client.OnMessage += OnMessageHandler;
         }
@@ -107,8 +107,13 @@ namespace SchoolHelperTelegramBot
             {
                 Keyboard = new List<List<KeyboardButton>>
                 {
-                    new List<KeyboardButton>{ /*new KeyboardButton { Text = "5 А"}, new KeyboardButton { Text = "5 Б" },*/ new KeyboardButton { Text = "5 В" } },
-                    //new List<KeyboardButton>{ new KeyboardButton { Text = "6 А"}, new KeyboardButton { Text = "6 Б" }, new KeyboardButton { Text = "6 В" } }
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "5 А"}, new KeyboardButton { Text = "5 Б" }, new KeyboardButton { Text = "5 В" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "6 А"}, new KeyboardButton { Text = "6 Б" }, new KeyboardButton { Text = "6 В" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "7 А"}, new KeyboardButton { Text = "7 Б" }, new KeyboardButton { Text = "7 В" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "8 А"}, new KeyboardButton { Text = "8 Б" }, new KeyboardButton { Text = "8 В" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "9 А"}, new KeyboardButton { Text = "9 Б" }, new KeyboardButton { Text = "9 В" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "10 А"}, new KeyboardButton { Text = "10 Б" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "11 А"}, new KeyboardButton { Text = "11 Б" } }
                 }
             };
         }
@@ -119,7 +124,7 @@ namespace SchoolHelperTelegramBot
             {
                 Keyboard = new List<List<KeyboardButton>>
                 {
-                    new List<KeyboardButton>{ new KeyboardButton { Text = "1"}/*, new KeyboardButton { Text = "2" }, new KeyboardButton { Text = "3" }, new KeyboardButton { Text = "4" }*/ }
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "1"}, new KeyboardButton { Text = "2" }, new KeyboardButton { Text = "3" }, new KeyboardButton { Text = "4" } }
                 }
             };
         }
