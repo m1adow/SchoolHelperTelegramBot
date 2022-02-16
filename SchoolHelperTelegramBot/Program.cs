@@ -152,6 +152,10 @@ class Program
                     {
                         currentUser.State = UserState.EnterWeekAdmin;
                         await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть неділю");
+
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"Amdin {message.From.Username}({message.From.Id}) have entered.");
+                        Console.ForegroundColor = ConsoleColor.Gray;
                     }
                     else
                     {
@@ -186,6 +190,11 @@ class Program
 
                 _week = digit;
                 await _client.SendTextMessageAsync(currentUser.ChatId, $"Неділя змінена на {_week}.");
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Amdin {message.From.Username}({message.From.Id}) have changed the week.");
+                Console.ForegroundColor = ConsoleColor.Gray;
+
                 currentUser.State = UserState.Basic;
                 return;
             }
@@ -225,14 +234,6 @@ class Program
             Console.WriteLine(ex.Message);
             Console.ForegroundColor = ConsoleColor.Gray;
         }
-    }
-
-    private static bool CheckOnForm(Telegram.Bot.Types.Message message)
-    {
-        if (message.Text != "5-А" || message.Text != "5-Б" || message.Text != "5-В" || message.Text != "6-А" || message.Text != "6-Б" || message.Text != "6-В" || message.Text != "7-А" || message.Text != "7-Б" || message.Text != "7-В" || message.Text != "8-А" || message.Text != "8-Б" || message.Text != "8-В" || message.Text != "9-А" || message.Text != "9-Б" || message.Text != "9-В" || message.Text != "10-А" || message.Text != "10-Б" || message.Text != "10-В" || message.Text != "11-А" || message.Text != "11-Б")
-            return true;
-        else
-            return false;
     }
 
     private static IReplyMarkup GetFormButtons()
