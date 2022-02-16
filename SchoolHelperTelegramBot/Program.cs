@@ -103,30 +103,42 @@ class Program
                 currentUser.Day = message.Text;
                 currentUser.State = UserState.Basic;
 
-                await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
-
                 using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{currentUser.Week}.png"))
                 {
                     InputOnlineFile inputOnlineFile = new(stream);
                     await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
                 }
 
+                await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
+
                 return;
             }
 
             if (currentUser.State == UserState.EnterFormToday)
             {
-                currentUser.Form = message.Text;
-                currentUser.State = UserState.Basic;
-
-                _days.TryGetValue(DateTime.Now.DayOfWeek.ToString(), out string day);
-
-                await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
-
-                using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{day}_{_week}.png"))
+                try
                 {
-                    InputOnlineFile inputOnlineFile = new(stream);
-                    await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
+                    currentUser.Form = message.Text;
+                    currentUser.State = UserState.Basic;
+
+                    _days.TryGetValue(DateTime.Now.DayOfWeek.ToString(), out string day);
+
+                    using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{day}_{_week}.png"))
+                    {
+                        InputOnlineFile inputOnlineFile = new(stream);
+                        await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
+                    }
+
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
+                }
+                catch (Exception ex)
+                {
+                    currentUser.State = UserState.EnterFormToday;
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть вірне значення");
+
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine(ex.Message);
+                    Console.ForegroundColor = ConsoleColor.Gray;
                 }
 
                 return;
@@ -166,7 +178,7 @@ class Program
                     return;
                 }
 
-                if(digit <= 0 || digit >= 4)
+                if (digit <= 0 || digit >= 4)
                 {
                     await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть значення від 1 до 4.");
                     return;
@@ -213,6 +225,14 @@ class Program
             Console.WriteLine(ex.Message);
             Console.ForegroundColor = ConsoleColor.Gray;
         }
+    }
+
+    private static bool CheckOnForm(Telegram.Bot.Types.Message message)
+    {
+        if (message.Text != "5-А" || message.Text != "5-Б" || message.Text != "5-В" || message.Text != "6-А" || message.Text != "6-Б" || message.Text != "6-В" || message.Text != "7-А" || message.Text != "7-Б" || message.Text != "7-В" || message.Text != "8-А" || message.Text != "8-Б" || message.Text != "8-В" || message.Text != "9-А" || message.Text != "9-Б" || message.Text != "9-В" || message.Text != "10-А" || message.Text != "10-Б" || message.Text != "10-В" || message.Text != "11-А" || message.Text != "11-Б")
+            return true;
+        else
+            return false;
     }
 
     private static IReplyMarkup GetFormButtons()
