@@ -154,7 +154,7 @@ class Program
                         await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть неділю");
 
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"Amdin {message.From.Username}({message.From.Id}) have entered.");
+                        Console.WriteLine($"Admin {message.From.Username}({message.From.Id}) have entered.");
                         Console.ForegroundColor = ConsoleColor.Gray;
                     }
                     else
@@ -182,7 +182,7 @@ class Program
                     return;
                 }
 
-                if (digit <= 0 || digit >= 4)
+                if (digit <= 0 || digit > 4)
                 {
                     await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть значення від 1 до 4.");
                     return;
@@ -192,7 +192,7 @@ class Program
                 await _client.SendTextMessageAsync(currentUser.ChatId, $"Неділя змінена на {_week}.");
 
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Amdin {message.From.Username}({message.From.Id}) have changed the week.");
+                Console.WriteLine($"Admin {message.From.Username}({message.From.Id}) have changed the week.");
                 Console.ForegroundColor = ConsoleColor.Gray;
 
                 currentUser.State = UserState.Basic;
