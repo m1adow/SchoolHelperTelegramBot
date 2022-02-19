@@ -36,9 +36,9 @@ class Program
     public class User
     {
         public long ChatId { get; set; }
-        public string Form { get; set; }
-        public string Week { get; set; }
-        public string Day { get; set; }
+        public string? Form { get; set; }
+        public string? Week { get; set; }
+        public string? Day { get; set; }
         public int CountOfSignIn { get; set; }
         public UserState State { get; set; }
     }
@@ -100,7 +100,7 @@ class Program
 
             if (currentUser.State == UserState.EnterDay)
             {
-                _days.TryGetValue(message.Text, out string day);
+                _days.TryGetValue(message.Text, out string? day);
                 currentUser.Day = day;
                 currentUser.State = UserState.Basic;
 
