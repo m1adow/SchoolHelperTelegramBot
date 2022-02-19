@@ -26,11 +26,11 @@ class Program
 
     private static Dictionary<string, string> _days = new Dictionary<string, string>()
     {
-        ["Monday"] = "Понедiлок",
-        ["Tuesday"] = "Вiвторок",
-        ["Wednesday"] = "Середа",
-        ["Thursday"] = "Четвер",
-        ["Friday"] = "П'ятниця"
+        ["Понедiлок"] = "Monday",
+        ["Вiвторок"] = "Tuesday",
+        ["Середа"] = "Wednesday",
+        ["Четвер"] = "Thursday",
+        ["П'ятниця"] = "Friday"
     };
 
     public class User
@@ -100,7 +100,8 @@ class Program
 
             if (currentUser.State == UserState.EnterDay)
             {
-                currentUser.Day = message.Text;
+                _days.TryGetValue(message.Text, out string day);
+                currentUser.Day = day;
                 currentUser.State = UserState.Basic;
 
                 using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{currentUser.Week}.png"))
@@ -116,30 +117,22 @@ class Program
 
             if (currentUser.State == UserState.EnterFormToday)
             {
-                try
+                currentUser.Form = message.Text;
+                currentUser.State = UserState.Basic;
+
+                if (DateTime.Now.DayOfWeek == DayOfWeek.Saturday || DateTime.Now.DayOfWeek == DayOfWeek.Sunday)
                 {
-                    currentUser.Form = message.Text;
-                    currentUser.State = UserState.Basic;
-
-                    _days.TryGetValue(DateTime.Now.DayOfWeek.ToString(), out string day);
-
-                    using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{day}_{_week}.png"))
-                    {
-                        InputOnlineFile inputOnlineFile = new(stream);
-                        await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
-                    }
-
-                    await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Сьогодні вихідний", replyMarkup: new ReplyKeyboardRemove());
+                    return;
                 }
-                catch (Exception ex)
+
+                using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{DateTime.Now.DayOfWeek}_{_week}.png"))
                 {
-                    currentUser.State = UserState.EnterFormToday;
-                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть вірне значення");
-
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine(ex.Message);
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    InputOnlineFile inputOnlineFile = new(stream);
+                    await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
                 }
+
+                await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
 
                 return;
             }
