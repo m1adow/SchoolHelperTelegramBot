@@ -91,6 +91,12 @@ class Program
 
             if (currentUser.State == UserState.EnterWeek)
             {
+                if(int.Parse(message.Text) <= 0 || int.Parse(message.Text) > 4)
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть значення від 1 до 4", replyMarkup: GetWeekButtons());
+                    return;
+                }
+
                 currentUser.Week = message.Text;
                 currentUser.State = UserState.EnterDay;
 
@@ -100,6 +106,12 @@ class Program
 
             if (currentUser.State == UserState.EnterDay)
             {
+                if(!_days.Any(a => a.Key == message.Text))
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть коректне значення", replyMarkup: GetDayButtons());
+                    return;
+                }
+
                 _days.TryGetValue(message.Text, out string? day);
                 currentUser.Day = day;
                 currentUser.State = UserState.Basic;
