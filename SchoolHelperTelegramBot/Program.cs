@@ -69,9 +69,9 @@ class Program
         Console.ForegroundColor = ConsoleColor.Gray;
     }
 
-    private static async void SendPhoto(TelegramBotClient? client, User? user)
+    private static async void SendPhoto(TelegramBotClient? client, User? user, string path)
     {
-        using (Stream stream = System.IO.File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{user.Form}\{DateTime.Now.DayOfWeek}_{_week}.png"))
+        using (Stream stream = System.IO.File.OpenRead(path))
         {
             InputOnlineFile inputOnlineFile = new(stream);
             await client.SendPhotoAsync(user.ChatId, inputOnlineFile);
@@ -140,7 +140,7 @@ class Program
                 currentUser.Day = day;
                 currentUser.State = UserState.Basic;
 
-                SendPhoto(_client, currentUser);
+                SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{_week}.png");
                 return;
             }
 
@@ -155,7 +155,22 @@ class Program
                     return;
                 }
 
-                SendPhoto(_client, currentUser);
+                SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{DateTime.Now.DayOfWeek}_{_week}.png");
+                return;
+            }
+
+            if(currentUser.State == UserState.EnterFormTommorow)
+            {
+                currentUser.Form = message.Text;
+                currentUser.State = UserState.Basic;
+
+                if (DateTime.Now.DayOfWeek + 1 == DayOfWeek.Saturday || DateTime.Now.DayOfWeek + 1 == DayOfWeek.Sunday)
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Завтра вихідний", replyMarkup: new ReplyKeyboardRemove());
+                    return;
+                }
+
+                SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{DateTime.Now.DayOfWeek + 1}_{_week}.png");
                 return;
             }
 
@@ -251,6 +266,10 @@ class Program
                             currentUser.State = UserState.EnterFormToday;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
                             return;
+                        case "/tommorow":
+                            currentUser.State = UserState.EnterFormTommorow;
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
+                            return;
                         case "/admin":
                             if (currentUser.IsAdmin == true)
                             {
@@ -263,6 +282,10 @@ class Program
                                 {
                                     currentUser.State = UserState.AdminSignIn;
                                     await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть пароль");
+                                }
+                                else
+                                {
+                                    await _client.SendTextMessageAsync(currentUser.ChatId, "У вас більше не має можливості ввійти у цей аккаунт");
                                 }
                             }
                             return;
