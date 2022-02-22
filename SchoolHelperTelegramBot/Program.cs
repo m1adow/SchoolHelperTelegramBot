@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using System.Diagnostics;
+using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.InputFiles;
@@ -159,7 +160,7 @@ class Program
                 return;
             }
 
-            if(currentUser.State == UserState.EnterFormTommorow)
+            if (currentUser.State == UserState.EnterFormTommorow)
             {
                 currentUser.Form = message.Text;
                 currentUser.State = UserState.Basic;
@@ -231,13 +232,13 @@ class Program
                 {
                     switch (message.Text)
                     {
-                        case "Змiнити недiлю":      
+                        case "Змiнити недiлю":
                             await _client.SendTextMessageAsync(message.Chat.Id, "Введіть неділю", replyMarkup: new ReplyKeyboardRemove());
                             currentUser.State = UserState.ChangeWeekAdmin;
                             return;
                         case "Змiнити розклад":
                             return;
-                        case "Перезагрузити бота":                           
+                        case "Перезагрузити бота":
                             return;
                         case "Вийти":
                             await _client.SendTextMessageAsync(message.Chat.Id, "Ви вийшли з адмін акаунту", replyMarkup: new ReplyKeyboardRemove());
@@ -266,7 +267,7 @@ class Program
                             currentUser.State = UserState.EnterFormToday;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
                             return;
-                        case "/tommorow":
+                        case "/tomorrow":
                             currentUser.State = UserState.EnterFormTommorow;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
                             return;
