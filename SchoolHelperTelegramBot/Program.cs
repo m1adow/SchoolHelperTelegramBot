@@ -28,7 +28,7 @@ class Program
 
     private static List<User> _users = new();
 
-    private static Dictionary<string, string> _days = new Dictionary<string, string>()
+    private static Dictionary<string, string> _days = new()
     {
         ["Понедiлок"] = "Monday",
         ["Вiвторок"] = "Tuesday",
@@ -67,6 +67,17 @@ class Program
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine(text);
         Console.ForegroundColor = ConsoleColor.Gray;
+    }
+
+    private static async void SendPhoto(TelegramBotClient? client, User? user)
+    {
+        using (Stream stream = System.IO.File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{user.Form}\{DateTime.Now.DayOfWeek}_{_week}.png"))
+        {
+            InputOnlineFile inputOnlineFile = new(stream);
+            await client.SendPhotoAsync(user.ChatId, inputOnlineFile);
+        }
+
+        await client.SendTextMessageAsync(user.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
     }
 
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
@@ -129,14 +140,7 @@ class Program
                 currentUser.Day = day;
                 currentUser.State = UserState.Basic;
 
-                using (Stream stream = System.IO.File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{currentUser.Week}.png"))
-                {
-                    InputOnlineFile inputOnlineFile = new(stream);
-                    await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
-                }
-
-                await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
-
+                SendPhoto(_client, currentUser);
                 return;
             }
 
@@ -151,14 +155,7 @@ class Program
                     return;
                 }
 
-                using (Stream stream = System.IO.File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{DateTime.Now.DayOfWeek}_{_week}.png"))
-                {
-                    InputOnlineFile inputOnlineFile = new(stream);
-                    await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
-                }
-
-                await _client.SendTextMessageAsync(currentUser.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
-
+                SendPhoto(_client, currentUser);
                 return;
             }
 
