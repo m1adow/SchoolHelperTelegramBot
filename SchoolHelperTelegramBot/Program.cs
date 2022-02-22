@@ -13,7 +13,8 @@ public enum UserState
     EnterWeek = 2,
     EnterDay = 3,
     EnterFormToday = 4,
-    EnterWeekAdmin = 5
+    AdminSignIn = 5,
+    EnterWeekAdmin = 6
 }
 
 class Program
@@ -41,6 +42,7 @@ class Program
         public string? Day { get; set; }
         public int CountOfSignIn { get; set; }
         public UserState State { get; set; }
+        public bool IsAdmin { get; set; }
     }
 
     static void Main(string[] args)
@@ -69,6 +71,7 @@ class Program
                 {
                     ChatId = e.Message.Chat.Id,
                     CountOfSignIn = 0,
+                    IsAdmin = false,
                     State = UserState.Basic
                 };
 
@@ -149,7 +152,7 @@ class Program
                 return;
             }
 
-            if (currentUser.State == UserState.Admin)
+            if (currentUser.State == UserState.AdminSignIn)
             {
                 if (currentUser.CountOfSignIn != 3)
                 {
@@ -219,10 +222,18 @@ class Program
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
                             return;
                         case "/admin":
-                            if (currentUser.CountOfSignIn != 3)
+                            if(currentUser.IsAdmin == true)
                             {
                                 currentUser.State = UserState.Admin;
-                                await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть пароль");
+                                return;
+                            }
+                            else
+                            {
+                                if (currentUser.CountOfSignIn != 3)
+                                {
+                                    currentUser.State = UserState.AdminSignIn;
+                                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть пароль");                                   
+                                }
                             }
                             return;
                         default:
