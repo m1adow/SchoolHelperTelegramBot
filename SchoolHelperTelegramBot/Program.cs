@@ -1,5 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Args;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -13,8 +14,10 @@ public enum UserState
     EnterWeek = 2,
     EnterDay = 3,
     EnterFormToday = 4,
-    AdminSignIn = 5,
-    EnterWeekAdmin = 6
+    EnterFormTommorow = 5,
+    AdminSignIn = 6,
+    ChangeWeekAdmin = 7,
+    ChangeTableTimeAdmin = 8
 }
 
 class Program
@@ -54,9 +57,16 @@ class Program
         Console.ReadKey();
     }
 
-    private static void PrintLog(Telegram.Bot.Types.Message message, User? user)
+    private static void PrintLog(Message message, User? user)
     {
         Console.WriteLine($"{DateTime.Now.TimeOfDay} Message: {message.Text} From: {message.From.Username}({message.From.Id}) State: {user.State}");
+    }
+
+    private static void PrintAdminAct(string text)
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine(text);
+        Console.ForegroundColor = ConsoleColor.Gray;
     }
 
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
@@ -94,7 +104,7 @@ class Program
 
             if (currentUser.State == UserState.EnterWeek)
             {
-                if(int.Parse(message.Text) <= 0 || int.Parse(message.Text) > 4)
+                if (int.Parse(message.Text) <= 0 || int.Parse(message.Text) > 4)
                 {
                     await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть значення від 1 до 4", replyMarkup: GetWeekButtons());
                     return;
@@ -109,7 +119,7 @@ class Program
 
             if (currentUser.State == UserState.EnterDay)
             {
-                if(!_days.Any(a => a.Key == message.Text))
+                if (!_days.Any(a => a.Key == message.Text))
                 {
                     await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть коректне значення", replyMarkup: GetDayButtons());
                     return;
@@ -119,7 +129,7 @@ class Program
                 currentUser.Day = day;
                 currentUser.State = UserState.Basic;
 
-                using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{currentUser.Week}.png"))
+                using (Stream stream = System.IO.File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{currentUser.Week}.png"))
                 {
                     InputOnlineFile inputOnlineFile = new(stream);
                     await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
@@ -141,7 +151,7 @@ class Program
                     return;
                 }
 
-                using (Stream stream = File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{DateTime.Now.DayOfWeek}_{_week}.png"))
+                using (Stream stream = System.IO.File.OpenRead($@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{DateTime.Now.DayOfWeek}_{_week}.png"))
                 {
                     InputOnlineFile inputOnlineFile = new(stream);
                     await _client.SendPhotoAsync(currentUser.ChatId, inputOnlineFile);
@@ -158,12 +168,11 @@ class Program
                 {
                     if (message.Text == "school5")
                     {
-                        currentUser.State = UserState.EnterWeekAdmin;
-                        await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть неділю");
+                        currentUser.State = UserState.Admin;
+                        currentUser.IsAdmin = true;
+                        await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть команду", replyMarkup: GetAdminCommands());
 
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"Admin {message.From.Username}({message.From.Id}) have entered.");
-                        Console.ForegroundColor = ConsoleColor.Gray;
+                        PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have entered.");
                     }
                     else
                     {
@@ -180,7 +189,7 @@ class Program
                 return;
             }
 
-            if (currentUser.State == UserState.EnterWeekAdmin)
+            if (currentUser.State == UserState.ChangeWeekAdmin)
             {
                 byte.TryParse(message.Text, out byte digit);
 
@@ -199,12 +208,36 @@ class Program
                 _week = digit;
                 await _client.SendTextMessageAsync(currentUser.ChatId, $"Неділя змінена на {_week}.");
 
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Admin {message.From.Username}({message.From.Id}) have changed the week.");
-                Console.ForegroundColor = ConsoleColor.Gray;
-
-                currentUser.State = UserState.Basic;
+                PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have changed the week.");
+                currentUser.State = UserState.Admin;
                 return;
+            }
+
+            if (currentUser.State == UserState.Admin)
+            {
+                if (message.Text != null)
+                {
+                    switch (message.Text)
+                    {
+                        case "Змiнити недiлю":      
+                            await _client.SendTextMessageAsync(message.Chat.Id, "Введіть неділю", replyMarkup: new ReplyKeyboardRemove());
+                            currentUser.State = UserState.ChangeWeekAdmin;
+                            return;
+                        case "Змiнити розклад":
+                            return;
+                        case "Перезагрузити бота":                           
+                            return;
+                        case "Вийти":
+                            await _client.SendTextMessageAsync(message.Chat.Id, "Ви вийшли з адмін акаунту", replyMarkup: new ReplyKeyboardRemove());
+                            PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have log out from account.");
+                            currentUser.State = UserState.Basic;
+                            return;
+                        default:
+                            await _client.SendTextMessageAsync(message.Chat.Id, "Не існує такої команди");
+                            break;
+                    }
+                }
+                else await _client.SendTextMessageAsync(message.Chat.Id, "Введіть команду");
             }
 
             if (currentUser.State == UserState.Basic)
@@ -222,7 +255,7 @@ class Program
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: GetFormButtons());
                             return;
                         case "/admin":
-                            if(currentUser.IsAdmin == true)
+                            if (currentUser.IsAdmin == true)
                             {
                                 currentUser.State = UserState.Admin;
                                 return;
@@ -232,7 +265,7 @@ class Program
                                 if (currentUser.CountOfSignIn != 3)
                                 {
                                     currentUser.State = UserState.AdminSignIn;
-                                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть пароль");                                   
+                                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть пароль");
                                 }
                             }
                             return;
@@ -287,6 +320,17 @@ class Program
             Keyboard = new List<List<KeyboardButton>>
                 {
                     new List<KeyboardButton>{ new KeyboardButton { Text = "Понедiлок" }, new KeyboardButton { Text = "Вiвторок" }, new KeyboardButton { Text = "Середа" }, new KeyboardButton { Text = "Четвер" }, new KeyboardButton { Text = "П'ятниця" } }
+                }
+        };
+    }
+
+    private static IReplyMarkup GetAdminCommands()
+    {
+        return new ReplyKeyboardMarkup
+        {
+            Keyboard = new List<List<KeyboardButton>>
+                {
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Змiнити недiлю" }, new KeyboardButton { Text = "Змiнити розклад" }, new KeyboardButton { Text = "Перезагрузити бота" }, new KeyboardButton { Text = "Вийти" } }
                 }
         };
     }
