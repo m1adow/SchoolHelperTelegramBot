@@ -62,13 +62,23 @@ class Program
 
     private static async void SendPhoto(TelegramBotClient? client, Models.User? user, string path)
     {
-        using (Stream stream = System.IO.File.OpenRead(path))
+        try
         {
-            InputOnlineFile inputOnlineFile = new(stream);
-            await client.SendPhotoAsync(user.ChatId, inputOnlineFile);
-        }
+            using (Stream stream = System.IO.File.OpenRead(path))
+            {
+                InputOnlineFile inputOnlineFile = new(stream);
+                await client.SendPhotoAsync(user.ChatId, inputOnlineFile);
+            }
 
-        await client.SendTextMessageAsync(user.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
+            await client.SendTextMessageAsync(user.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(ex.Message);
+            Console.ForegroundColor = ConsoleColor.Gray;
+            await client.SendTextMessageAsync(user.ChatId, "Перевірте вірність даних", replyMarkup: new ReplyKeyboardRemove());
+        }
     }
 
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
@@ -105,7 +115,16 @@ class Program
                         SqlCommand sqlCommand = new($@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'", _sqlConnection);
                         SqlDataReader dataReader = sqlCommand.ExecuteReader();
 
-                        while (dataReader.Read()) await _client.SendTextMessageAsync(currentUser.ChatId, $"{dataReader["Name"]}. E-Mail: {dataReader["E-Mail"]}");
+                        while (dataReader.Read())
+                        {
+                            if(dataReader["Name"] is null || dataReader["E-Mail"] is null)
+                            {
+                                await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такого вчителя, введіть справжні дані");
+                                return;
+                            }
+
+                            await _client.SendTextMessageAsync(currentUser.ChatId, $"{dataReader["Name"]}. E-Mail: {dataReader["E-Mail"]}");
+                        }
 
                         dataReader.Close();
                     }
@@ -114,8 +133,6 @@ class Program
                         Console.ForegroundColor = ConsoleColor.DarkMagenta;
                         Console.WriteLine(ex.Message);
                         Console.ForegroundColor = ConsoleColor.Gray;
-
-                        await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такого вчителя");
                         return;
                     }
                 }
@@ -257,11 +274,15 @@ class Program
                         case "Змiнити розклад":
                             return;
                         case "Перезагрузити бота":
+                            PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have restarted the bot.");
                             _users.Clear();
                             _client = new TelegramBotClient(_token);
                             _client.OnMessage += OnMessageHandler;
+                            _sqlConnection = null;
+                            ConnectBD(out _sqlConnection);
                             return;
                         case "Очистити пам'ять":
+                            PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have cleared the bot.");
                             _users.Clear();
                             return;
                         case "Вийти":
@@ -320,6 +341,9 @@ class Program
                                     await _client.SendTextMessageAsync(currentUser.ChatId, "У вас більше не має можливості ввійти у цей аккаунт");
                                 }
                             }
+                            return;
+                        case "/clear":
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Очищення клавіатури", replyMarkup: new ReplyKeyboardRemove());
                             return;
                         default:
                             await _client.SendTextMessageAsync(message.Chat.Id, "Не існує такої команди");
