@@ -29,7 +29,7 @@ class Program
 
     static void Main(string[] args)
     {
-        ConnectBD(out _sqlConnection);       
+        ConnectBD(out _sqlConnection);
         _week = 1;
         _client = new TelegramBotClient(_token);
         _client.StartReceiving();
@@ -95,6 +95,34 @@ class Program
             var message = e.Message;
             PrintLog(message, currentUser);
 
+            if (currentUser.State == Settings.UserState.EnterTeacher)
+            {
+                if (message.Text != null)
+                {
+                    //SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%message%'
+                    try
+                    {
+                        SqlCommand sqlCommand = new($@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'", _sqlConnection);
+                        SqlDataReader dataReader = sqlCommand.ExecuteReader();
+
+                        while (dataReader.Read()) await _client.SendTextMessageAsync(currentUser.ChatId, $"{dataReader["Name"]}. E-Mail: {dataReader["E-Mail"]}");
+
+                        dataReader.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkMagenta;
+                        Console.WriteLine(ex.Message);
+                        Console.ForegroundColor = ConsoleColor.Gray;
+
+                        await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такого вчителя");
+                        return;
+                    }
+                }
+
+                currentUser.State = Settings.UserState.Basic;
+                return;
+            }
             if (currentUser.State == Settings.UserState.EnterForm)
             {
                 currentUser.Form = message.Text;
@@ -269,6 +297,10 @@ class Program
                             return;
                         case "/bells":
                             SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\bells.png");
+                            return;
+                        case "/teacher":
+                            currentUser.State = Settings.UserState.EnterTeacher;
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть прізвище");
                             return;
                         case "/admin":
                             if (currentUser.IsAdmin == true)

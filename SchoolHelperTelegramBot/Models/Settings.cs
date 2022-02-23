@@ -15,7 +15,7 @@ namespace SchoolHelperTelegramBot.Models
             EnterFormTommorow = 5,
             AdminSignIn = 6,
             ChangeWeekAdmin = 7,
-            ChangeTableTimeAdmin = 8
+            EnterTeacher = 8
         }
 
         public static IReplyMarkup GetFormButtons()
