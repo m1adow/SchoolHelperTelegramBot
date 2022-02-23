@@ -1,6 +1,4 @@
 ﻿using SchoolHelperTelegramBot.Models;
-using System.Diagnostics;
-using System.Reflection;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
@@ -216,9 +214,12 @@ class Program
                         case "Змiнити розклад":
                             return;
                         case "Перезагрузити бота":
-                            var filePath = Assembly.GetExecutingAssembly().Location;
-                            Process.Start(filePath);
-                            Environment.Exit(0);
+                            _users.Clear();
+                            _client = new TelegramBotClient(_token);
+                            _client.OnMessage += OnMessageHandler;
+                            return;
+                        case "Очистити пам'ять":
+                            _users.Clear();
                             return;
                         case "Вийти":
                             await _client.SendTextMessageAsync(message.Chat.Id, "Ви вийшли з адмін акаунту", replyMarkup: new ReplyKeyboardRemove());
