@@ -1,4 +1,6 @@
 ﻿using SchoolHelperTelegramBot.Models;
+using System.Data;
+using System.Data.SqlClient;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
@@ -10,6 +12,7 @@ namespace SchoolHelperTelegramBot;
 class Program
 {
     private static TelegramBotClient? _client;
+    private static SqlConnection? _sqlConnection;
     private static readonly string _token = "5151427908:AAFbHUIvyt1NQrzpS7mTe3GQIG7TuZHLUY0";
     private static byte _week;
 
@@ -26,11 +29,23 @@ class Program
 
     static void Main(string[] args)
     {
+        ConnectBD(out _sqlConnection);       
         _week = 1;
         _client = new TelegramBotClient(_token);
         _client.StartReceiving();
         _client.OnMessage += OnMessageHandler;
         Console.ReadKey();
+    }
+
+    private static void ConnectBD(out SqlConnection? sqlConnection)
+    {
+        sqlConnection = new SqlConnection(@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=D:\study\codes VS\SchoolHelperTelegramBot\SchoolHelperTelegramBot\School.mdf;Integrated Security=True");
+        sqlConnection.Open();
+
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        if (sqlConnection.State == ConnectionState.Open) Console.WriteLine("Connection was established");
+        else Console.WriteLine("Connection wasn't established");
+        Console.ForegroundColor = ConsoleColor.Gray;
     }
 
     private static void PrintLog(Message message, Models.User? user)
@@ -69,7 +84,7 @@ class Program
                     ChatId = e.Message.Chat.Id,
                     CountOfSignIn = 0,
                     IsAdmin = false,
-                    State = Models.Settings.UserState.Basic
+                    State = Settings.UserState.Basic
                 };
 
                 _users.Add(currentUser);
@@ -80,7 +95,7 @@ class Program
             var message = e.Message;
             PrintLog(message, currentUser);
 
-            if (currentUser.State == Models.Settings.UserState.EnterForm)
+            if (currentUser.State == Settings.UserState.EnterForm)
             {
                 currentUser.Form = message.Text;
                 currentUser.State = Settings.UserState.EnterWeek;
@@ -288,5 +303,5 @@ class Program
             Console.WriteLine(ex.Message);
             Console.ForegroundColor = ConsoleColor.Gray;
         }
-    }    
+    }
 }
