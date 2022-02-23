@@ -252,6 +252,9 @@ class Program
                             currentUser.State = Settings.UserState.EnterFormTommorow;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
                             return;
+                        case "/bells":
+                            SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\bells.png");
+                            return;
                         case "/admin":
                             if (currentUser.IsAdmin == true)
                             {
