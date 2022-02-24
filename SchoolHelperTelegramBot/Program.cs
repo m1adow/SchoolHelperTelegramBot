@@ -68,10 +68,8 @@ class Program
             using (Stream stream = System.IO.File.OpenRead(path))
             {
                 InputOnlineFile inputOnlineFile = new(stream);
-                await client.SendPhotoAsync(user.ChatId, inputOnlineFile);
+                await client.SendPhotoAsync(user.ChatId, inputOnlineFile, replyMarkup: new ReplyKeyboardRemove());
             }
-
-            await client.SendTextMessageAsync(user.ChatId, "Тримайте", replyMarkup: new ReplyKeyboardRemove());
         }
         catch (Exception ex)
         {
