@@ -1,6 +1,7 @@
 ﻿using SchoolHelperTelegramBot.Models;
 using System.Data;
 using System.Data.SqlClient;
+using System.Text.RegularExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
@@ -117,6 +118,14 @@ class Program
         }
     }
 
+    private static bool CheckForm(Message message, string pattern)
+    {
+        Regex regex = new(pattern);
+
+        if (regex.IsMatch(message.Text)) return true;
+        else return false;
+    }
+
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
     {
         try
@@ -150,6 +159,14 @@ class Program
             }
             if (currentUser.State == Settings.UserState.EnterForm)
             {
+                Regex regex = new("[1-11]{2}[А-В]");
+
+                if (!CheckForm(message, "[0-11]{2}-[А-В]{1}") && !CheckForm(message, "[5-9]{1}-[А-В]{1}"))
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть коректне значення", replyMarkup: Settings.GetFormButtons());
+                    return;
+                }
+
                 currentUser.Form = message.Text;
                 currentUser.State = Settings.UserState.EnterWeek;
 
@@ -190,6 +207,12 @@ class Program
 
             if (currentUser.State == Settings.UserState.EnterFormToday)
             {
+                if (!CheckForm(message, "[0-11]{2}-[А-В]{1}") && !CheckForm(message, "[5-9]{1}-[А-В]{1}"))
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть коректне значення", replyMarkup: Settings.GetFormButtons());
+                    return;
+                }
+
                 currentUser.Form = message.Text;
                 currentUser.State = Settings.UserState.Basic;
 
@@ -205,6 +228,12 @@ class Program
 
             if (currentUser.State == Settings.UserState.EnterFormTommorow)
             {
+                if (!CheckForm(message, "[0-11]{2}-[А-В]{1}") && !CheckForm(message, "[5-9]{1}-[А-В]{1}"))
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть коректне значення", replyMarkup: Settings.GetFormButtons());
+                    return;
+                }
+
                 currentUser.Form = message.Text;
                 currentUser.State = Settings.UserState.Basic;
 
@@ -287,7 +316,7 @@ class Program
                 return;
             }
 
-            if(currentUser.State == Settings.UserState.EnterTeacherNameForDeleteAdmin)
+            if (currentUser.State == Settings.UserState.EnterTeacherNameForDeleteAdmin)
             {
                 ActWithTeacher(_sqlConnection, currentUser, $"DELETE FROM Teacher WHERE Name LIKE N'{message.Text}'");
                 await _client.SendTextMessageAsync(currentUser.ChatId, $"Успішно видален учитель \"{message.Text}\"", replyMarkup: Settings.GetAdminCommands());
