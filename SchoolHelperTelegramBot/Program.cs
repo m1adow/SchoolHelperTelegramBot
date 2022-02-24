@@ -125,7 +125,7 @@ class Program
         }
     }
 
-    private static bool CheckFormRegex(Message message, string pattern)
+    private static bool CheckForm(Message message, string pattern)
     {
         Regex regex = new(pattern);
 
@@ -133,13 +133,15 @@ class Program
         else return false;
     }
 
-    private async static void CheckForm(TelegramBotClient? client, Message message, Models.User? user)
+    private async static Task<bool> IsFormRight(TelegramBotClient? client, Message message, Models.User? user)
     {
-        if (!CheckFormRegex(message, "[0-11]{2}-[А-В]{1}") && !CheckFormRegex(message, "[5-9]{1}-[А-В]{1}"))
+        if (!CheckForm(message, "[0-11]{2}-[А-В]{1}") && !CheckForm(message, "[5-9]{1}-[А-В]{1}"))
         {
             await client.SendTextMessageAsync(user.ChatId, "Введіть коректне значення", replyMarkup: Settings.GetFormButtons());
-            return;
+            return false;
         }
+
+        return true;
     }
 
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
@@ -176,7 +178,8 @@ class Program
 
             if (currentUser.State == Settings.UserState.EnterForm)
             {
-                CheckForm(_client, message, currentUser);
+                if (!IsFormRight(_client, message, currentUser).Result) return;
+
                 currentUser.Form = message.Text;
                 currentUser.State = Settings.UserState.EnterWeek;
 
@@ -217,7 +220,7 @@ class Program
 
             if (currentUser.State == Settings.UserState.EnterFormToday)
             {
-                CheckForm(_client, message, currentUser);
+                if (!IsFormRight(_client, message, currentUser).Result) return;
 
                 currentUser.Form = message.Text;
                 currentUser.State = Settings.UserState.Basic;
@@ -234,7 +237,7 @@ class Program
 
             if (currentUser.State == Settings.UserState.EnterFormTommorow)
             {
-                CheckForm(_client, message, currentUser);
+                if (!IsFormRight(_client, message, currentUser).Result) return;
 
                 currentUser.Form = message.Text;
                 currentUser.State = Settings.UserState.Basic;
