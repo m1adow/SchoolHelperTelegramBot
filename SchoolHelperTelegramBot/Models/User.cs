@@ -9,5 +9,7 @@
         public int CountOfSignIn { get; set; }
         public Settings.UserState State { get; set; }
         public bool IsAdmin { get; set; }
+        public string? TeacherName { get; set; }
+        public string? TeacherEmail { get; set; }
     }
 }

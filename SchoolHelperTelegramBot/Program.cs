@@ -81,6 +81,26 @@ class Program
         }
     }
 
+    private static async void GetTeacher(TelegramBotClient? client, Models.User? user, string request)
+    {
+        try
+        {
+            SqlCommand sqlCommand = new(request, _sqlConnection);
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkMagenta;
+            Console.WriteLine(ex.Message);
+            Console.ForegroundColor = ConsoleColor.Gray;
+            return;
+        }
+    }
+
+    private static async void SetTeacher(TelegramBotClient? client, Models.User? user, string request)
+    {
+
+    }
+
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
     {
         try
@@ -109,30 +129,7 @@ class Program
             {
                 if (message.Text != null)
                 {
-                    //SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%message%'
-                    try
-                    {
-                        SqlCommand sqlCommand = new($@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'", _sqlConnection);
-                        SqlDataReader dataReader = sqlCommand.ExecuteReader();
-
-                        while (dataReader.Read()) await _client.SendTextMessageAsync(currentUser.ChatId, $"{dataReader["Name"]}. E-Mail: {dataReader["E-Mail"]}");
-
-                        if (!dataReader.HasRows)
-                        {
-                            await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такого вчителя, введіть справжні дані");
-                            dataReader.Close();
-                            return;
-                        }
-
-                        dataReader.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.ForegroundColor = ConsoleColor.DarkMagenta;
-                        Console.WriteLine(ex.Message);
-                        Console.ForegroundColor = ConsoleColor.Gray;
-                        return;
-                    }
+                    GetTeacher(_client, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'");
                 }
 
                 currentUser.State = Settings.UserState.Basic;
@@ -259,6 +256,21 @@ class Program
                 return;
             }
 
+            if (currentUser.State == Settings.UserState.EnterTeacherNameAdmin)
+            {
+                currentUser.TeacherName = message.Text;
+                currentUser.State = Settings.UserState.EnterTeacherEMailAdmin;
+                return;
+            }
+
+            if(currentUser.State == Settings.UserState.EnterTeacherEMailAdmin)
+            {
+                currentUser.TeacherEmail = message.Text;
+                SetTeacher(_client, currentUser, $@"INSERT INTO Teacher (Name, [E-Mail]) VALUES (N'%{currentUser.TeacherName}%', N'%{currentUser.TeacherEmail}%')");
+                currentUser.State = Settings.UserState.Admin;
+                return;
+            }
+
             if (currentUser.State == Settings.UserState.Admin)
             {
                 if (message.Text != null)
@@ -270,6 +282,13 @@ class Program
                             currentUser.State = Settings.UserState.ChangeWeekAdmin;
                             return;
                         case "Змiнити розклад":
+                            return;
+                        case "Получити усiх вчителiв":
+                            GetTeacher(_client, currentUser, "SELECT Name, [E-Mail], Phone FROM Teacher");
+                            return;
+                        case "Додати вчителя":
+                            await _client.SendTextMessageAsync(message.Chat.Id, "Введіть i'мя вчителя", replyMarkup: new ReplyKeyboardRemove());
+                            currentUser.State = Settings.UserState.EnterTeacherNameAdmin;
                             return;
                         case "Перезагрузити бота":
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have restarted the bot.");
