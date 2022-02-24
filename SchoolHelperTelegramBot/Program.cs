@@ -81,11 +81,16 @@ class Program
         }
     }
 
-    private static async void GetTeacher(TelegramBotClient? client, Models.User? user, string request)
+    private static async void GetTeacher(TelegramBotClient? client, SqlConnection sqlConnection, Models.User? user, string request)
     {
         try
         {
-            SqlCommand sqlCommand = new(request, _sqlConnection);
+            SqlCommand sqlCommand = new(request, sqlConnection);
+            SqlDataReader dataReader = sqlCommand.ExecuteReader();
+
+            while (dataReader.Read()) await client.SendTextMessageAsync(user.ChatId, $"{dataReader["Name"]}. E-Mail: {dataReader["E-Mail"]}");
+
+            dataReader.Close();
         }
         catch (Exception ex)
         {
@@ -96,9 +101,20 @@ class Program
         }
     }
 
-    private static async void SetTeacher(TelegramBotClient? client, Models.User? user, string request)
+    private static async void SetTeacher(TelegramBotClient? client, SqlConnection sqlConnection, Models.User? user, string request)
     {
-
+        try
+        {
+            SqlCommand sqlCommand = new(request, sqlConnection);
+            sqlCommand.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkMagenta;
+            Console.WriteLine(ex.Message);
+            Console.ForegroundColor = ConsoleColor.Gray;
+            return;
+        }
     }
 
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
@@ -127,10 +143,7 @@ class Program
 
             if (currentUser.State == Settings.UserState.EnterTeacher)
             {
-                if (message.Text != null)
-                {
-                    GetTeacher(_client, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'");
-                }
+                if (message.Text != null) GetTeacher(_client, _sqlConnection, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'");
 
                 currentUser.State = Settings.UserState.Basic;
                 return;
@@ -215,7 +228,7 @@ class Program
                         currentUser.IsAdmin = true;
                         await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть команду", replyMarkup: Settings.GetAdminCommands());
 
-                        PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have entered.");
+                        PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have log in.");
                     }
                     else
                     {
@@ -259,14 +272,16 @@ class Program
             if (currentUser.State == Settings.UserState.EnterTeacherNameAdmin)
             {
                 currentUser.TeacherName = message.Text;
+                await _client.SendTextMessageAsync(message.Chat.Id, "Введіть почту вчителя", replyMarkup: new ReplyKeyboardRemove());
                 currentUser.State = Settings.UserState.EnterTeacherEMailAdmin;
                 return;
             }
 
-            if(currentUser.State == Settings.UserState.EnterTeacherEMailAdmin)
+            if (currentUser.State == Settings.UserState.EnterTeacherEMailAdmin)
             {
                 currentUser.TeacherEmail = message.Text;
-                SetTeacher(_client, currentUser, $@"INSERT INTO Teacher (Name, [E-Mail]) VALUES (N'%{currentUser.TeacherName}%', N'%{currentUser.TeacherEmail}%')");
+                SetTeacher(_client, _sqlConnection, currentUser, $@"INSERT INTO Teacher (Name, [E-Mail]) VALUES (N'{currentUser.TeacherName}', N'{currentUser.TeacherEmail}')");
+                await _client.SendTextMessageAsync(message.Chat.Id, $"Успішно добавлен вчитель \"{currentUser.TeacherName}\" з поштою \"{currentUser.TeacherEmail}\"", replyMarkup: Settings.GetAdminCommands());
                 currentUser.State = Settings.UserState.Admin;
                 return;
             }
@@ -284,7 +299,7 @@ class Program
                         case "Змiнити розклад":
                             return;
                         case "Получити усiх вчителiв":
-                            GetTeacher(_client, currentUser, "SELECT Name, [E-Mail], Phone FROM Teacher");
+                            GetTeacher(_client, _sqlConnection, currentUser, "SELECT Name, [E-Mail], Phone FROM Teacher");
                             return;
                         case "Додати вчителя":
                             await _client.SendTextMessageAsync(message.Chat.Id, "Введіть i'мя вчителя", replyMarkup: new ReplyKeyboardRemove());
@@ -305,6 +320,7 @@ class Program
                         case "Вийти":
                             await _client.SendTextMessageAsync(message.Chat.Id, "Ви вийшли з адмін акаунту", replyMarkup: new ReplyKeyboardRemove());
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have log out from account.");
+                            currentUser.IsAdmin = false;
                             currentUser.State = Settings.UserState.Basic;
                             return;
                         default:
