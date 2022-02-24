@@ -82,7 +82,7 @@ class Program
         }
     }
 
-    private static async void GetTeacher(TelegramBotClient? client, SqlConnection sqlConnection, Models.User? user, string request)
+    private static async Task<bool> GetTeacher(TelegramBotClient? client, SqlConnection sqlConnection, Models.User? user, string request)
     {
         try
         {
@@ -95,7 +95,7 @@ class Program
             {
                 await _client.SendTextMessageAsync(user.ChatId, "Не існує такого вчителя, введіть справжні дані");
                 dataReader.Close();
-                return;
+                return false;
             }
 
             dataReader.Close();
@@ -105,8 +105,10 @@ class Program
             Console.ForegroundColor = ConsoleColor.DarkMagenta;
             Console.WriteLine(ex.Message);
             Console.ForegroundColor = ConsoleColor.Gray;
-            return;
+            return false;
         }
+
+        return true;
     }
 
     private static void ActWithTeacher(SqlConnection sqlConnection, Models.User? user, string request)
@@ -170,7 +172,9 @@ class Program
 
             if (currentUser.State == Settings.UserState.EnterTeacher)
             {
-                if (message.Text != null) GetTeacher(_client, _sqlConnection, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'");
+                if (message.Text != null)
+                    if (!GetTeacher(_client, _sqlConnection, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'").Result)
+                        return;
 
                 currentUser.State = Settings.UserState.Basic;
                 return;
