@@ -91,6 +91,13 @@ class Program
 
             while (dataReader.Read()) await client.SendTextMessageAsync(user.ChatId, $"{dataReader["Name"]}. E-Mail: {dataReader["E-Mail"]}");
 
+            if (!dataReader.HasRows)
+            {
+                await _client.SendTextMessageAsync(user.ChatId, "Не існує такого вчителя, введіть справжні дані");
+                dataReader.Close();
+                return;
+            }
+
             dataReader.Close();
         }
         catch (Exception ex)
@@ -157,6 +164,7 @@ class Program
                 currentUser.State = Settings.UserState.Basic;
                 return;
             }
+
             if (currentUser.State == Settings.UserState.EnterForm)
             {
                 Regex regex = new("[1-11]{2}[А-В]");
