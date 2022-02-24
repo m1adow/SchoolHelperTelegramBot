@@ -16,8 +16,9 @@ namespace SchoolHelperTelegramBot.Models
             EnterTeacher = 15,
             AdminSignIn = 20,
             ChangeWeekAdmin = 21,
-            EnterTeacherNameAdmin = 22,
-            EnterTeacherEMailAdmin = 23
+            EnterTeacherNameForAddAdmin = 22,
+            EnterTeacherEMailForAddAdmin = 23,
+            EnterTeacherNameForDeleteAdmin = 24
         }
 
         public static IReplyMarkup GetFormButtons()
@@ -65,7 +66,14 @@ namespace SchoolHelperTelegramBot.Models
             {
                 Keyboard = new List<List<KeyboardButton>>
                 {
-                    new List<KeyboardButton>{ new KeyboardButton { Text = "Змiнити недiлю" }, new KeyboardButton { Text = "Змiнити розклад" }, new KeyboardButton { Text = "Додати вчителя" }, new KeyboardButton { Text = "Получити усiх вчителiв" }, new KeyboardButton { Text = "Перезагрузити бота" }, new KeyboardButton { Text = "Очистити пам'ять" }, new KeyboardButton { Text = "Вийти" } }
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Змiнити недiлю" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Змiнити розклад" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Додати вчителя" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Видалити вчителя" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Получити усiх вчителiв" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Перезагрузити бота" } },
+                    new List<KeyboardButton>{ new KeyboardButton { Text = "Очистити пам'ять" } },
+                    new List<KeyboardButton> { new KeyboardButton { Text = "Вийти" } }
                 }
             };
         }

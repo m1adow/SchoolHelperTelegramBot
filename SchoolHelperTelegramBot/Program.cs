@@ -101,7 +101,7 @@ class Program
         }
     }
 
-    private static async void SetTeacher(TelegramBotClient? client, SqlConnection sqlConnection, Models.User? user, string request)
+    private static void ActWithTeacher(SqlConnection sqlConnection, Models.User? user, string request)
     {
         try
         {
@@ -269,19 +269,29 @@ class Program
                 return;
             }
 
-            if (currentUser.State == Settings.UserState.EnterTeacherNameAdmin)
+            if (currentUser.State == Settings.UserState.EnterTeacherNameForAddAdmin)
             {
                 currentUser.TeacherName = message.Text;
-                await _client.SendTextMessageAsync(message.Chat.Id, "Введіть почту вчителя", replyMarkup: new ReplyKeyboardRemove());
-                currentUser.State = Settings.UserState.EnterTeacherEMailAdmin;
+                await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть почту вчителя", replyMarkup: new ReplyKeyboardRemove());
+                currentUser.State = Settings.UserState.EnterTeacherEMailForAddAdmin;
                 return;
             }
 
-            if (currentUser.State == Settings.UserState.EnterTeacherEMailAdmin)
+            if (currentUser.State == Settings.UserState.EnterTeacherEMailForAddAdmin)
             {
                 currentUser.TeacherEmail = message.Text;
-                SetTeacher(_client, _sqlConnection, currentUser, $@"INSERT INTO Teacher (Name, [E-Mail]) VALUES (N'{currentUser.TeacherName}', N'{currentUser.TeacherEmail}')");
-                await _client.SendTextMessageAsync(message.Chat.Id, $"Успішно добавлен вчитель \"{currentUser.TeacherName}\" з поштою \"{currentUser.TeacherEmail}\"", replyMarkup: Settings.GetAdminCommands());
+                ActWithTeacher(_sqlConnection, currentUser, $@"INSERT INTO Teacher (Name, [E-Mail]) VALUES (N'{currentUser.TeacherName}', N'{currentUser.TeacherEmail}')");
+                await _client.SendTextMessageAsync(currentUser.ChatId, $"Успішно добавлен учитель \"{currentUser.TeacherName}\" з поштою \"{currentUser.TeacherEmail}\"", replyMarkup: Settings.GetAdminCommands());
+                PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have added the teacher with name \"{currentUser.TeacherName}\" and with E-Mail \"{currentUser.TeacherEmail}\"");
+                currentUser.State = Settings.UserState.Admin;
+                return;
+            }
+
+            if(currentUser.State == Settings.UserState.EnterTeacherNameForDeleteAdmin)
+            {
+                ActWithTeacher(_sqlConnection, currentUser, $"DELETE FROM Teacher WHERE Name LIKE N'{message.Text}'");
+                await _client.SendTextMessageAsync(currentUser.ChatId, $"Успішно видален учитель \"{message.Text}\"", replyMarkup: Settings.GetAdminCommands());
+                PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have deleted the teacher with name \"{message.Text}\"");
                 currentUser.State = Settings.UserState.Admin;
                 return;
             }
@@ -293,7 +303,7 @@ class Program
                     switch (message.Text)
                     {
                         case "Змiнити недiлю":
-                            await _client.SendTextMessageAsync(message.Chat.Id, "Введіть неділю", replyMarkup: new ReplyKeyboardRemove());
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть неділю", replyMarkup: new ReplyKeyboardRemove());
                             currentUser.State = Settings.UserState.ChangeWeekAdmin;
                             return;
                         case "Змiнити розклад":
@@ -302,8 +312,12 @@ class Program
                             GetTeacher(_client, _sqlConnection, currentUser, "SELECT Name, [E-Mail], Phone FROM Teacher");
                             return;
                         case "Додати вчителя":
-                            await _client.SendTextMessageAsync(message.Chat.Id, "Введіть i'мя вчителя", replyMarkup: new ReplyKeyboardRemove());
-                            currentUser.State = Settings.UserState.EnterTeacherNameAdmin;
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть i'мя вчителя", replyMarkup: new ReplyKeyboardRemove());
+                            currentUser.State = Settings.UserState.EnterTeacherNameForAddAdmin;
+                            return;
+                        case "Видалити вчителя":
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть i'мя вчителя", replyMarkup: new ReplyKeyboardRemove());
+                            currentUser.State = Settings.UserState.EnterTeacherNameForDeleteAdmin;
                             return;
                         case "Перезагрузити бота":
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have restarted the bot.");
@@ -318,17 +332,17 @@ class Program
                             _users.Clear();
                             return;
                         case "Вийти":
-                            await _client.SendTextMessageAsync(message.Chat.Id, "Ви вийшли з адмін акаунту", replyMarkup: new ReplyKeyboardRemove());
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Ви вийшли з адмін акаунту", replyMarkup: new ReplyKeyboardRemove());
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have log out from account.");
                             currentUser.IsAdmin = false;
                             currentUser.State = Settings.UserState.Basic;
                             return;
                         default:
-                            await _client.SendTextMessageAsync(message.Chat.Id, "Не існує такої команди");
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такої команди");
                             break;
                     }
                 }
-                else await _client.SendTextMessageAsync(message.Chat.Id, "Введіть команду");
+                else await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть команду");
             }
 
             if (currentUser.State == Settings.UserState.Basic)
@@ -379,11 +393,11 @@ class Program
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Очищення клавіатури", replyMarkup: new ReplyKeyboardRemove());
                             return;
                         default:
-                            await _client.SendTextMessageAsync(message.Chat.Id, "Не існує такої команди");
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такої команди");
                             break;
                     }
                 }
-                else await _client.SendTextMessageAsync(message.Chat.Id, "Введіть команду");
+                else await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть команду");
             }
         }
         catch (Exception ex)
