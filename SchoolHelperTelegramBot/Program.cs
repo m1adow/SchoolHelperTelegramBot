@@ -29,7 +29,7 @@ class Program
 
     static void Main(string[] args)
     {
-        ConnectBD(out _sqlConnection);
+        ConnectToDataBase(out _sqlConnection);
         _week = 1;
         _client = new TelegramBotClient(_token);
         _client.StartReceiving();
@@ -37,7 +37,7 @@ class Program
         Console.ReadKey();
     }
 
-    private static void ConnectBD(out SqlConnection? sqlConnection)
+    private static void ConnectToDataBase(out SqlConnection? sqlConnection)
     {
         sqlConnection = new SqlConnection(@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=D:\study\codes VS\SchoolHelperTelegramBot\SchoolHelperTelegramBot\School.mdf;Integrated Security=True");
         sqlConnection.Open();
@@ -115,15 +115,13 @@ class Program
                         SqlCommand sqlCommand = new($@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'", _sqlConnection);
                         SqlDataReader dataReader = sqlCommand.ExecuteReader();
 
-                        while (dataReader.Read())
-                        {
-                            if(dataReader["Name"] is null || dataReader["E-Mail"] is null)
-                            {
-                                await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такого вчителя, введіть справжні дані");
-                                return;
-                            }
+                        while (dataReader.Read()) await _client.SendTextMessageAsync(currentUser.ChatId, $"{dataReader["Name"]}. E-Mail: {dataReader["E-Mail"]}");
 
-                            await _client.SendTextMessageAsync(currentUser.ChatId, $"{dataReader["Name"]}. E-Mail: {dataReader["E-Mail"]}");
+                        if (!dataReader.HasRows)
+                        {
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такого вчителя, введіть справжні дані");
+                            dataReader.Close();
+                            return;
                         }
 
                         dataReader.Close();
@@ -279,7 +277,7 @@ class Program
                             _client = new TelegramBotClient(_token);
                             _client.OnMessage += OnMessageHandler;
                             _sqlConnection = null;
-                            ConnectBD(out _sqlConnection);
+                            ConnectToDataBase(out _sqlConnection);
                             return;
                         case "Очистити пам'ять":
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have cleared the bot.");
