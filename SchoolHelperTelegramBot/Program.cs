@@ -19,6 +19,8 @@ class Program
 
     private static List<Models.User> _users = new();
 
+    private static Dictionary<string, int> _countOfRequests = new();
+
     private static Dictionary<string, string> _days = new()
     {
         ["Понедiлок"] = "Monday",
@@ -40,7 +42,7 @@ class Program
 
     private static void ConnectToDataBase(out SqlConnection? sqlConnection)
     {
-        sqlConnection = new SqlConnection(@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=D:\study\codes VS\SchoolHelperTelegramBot\SchoolHelperTelegramBot\School.mdf;Integrated Security=True");
+        sqlConnection = new SqlConnection($@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename={Environment.CurrentDirectory}\Resources\DataBase\School.mdf;Integrated Security=True");
         sqlConnection.Open();
 
         Console.ForegroundColor = ConsoleColor.Magenta;
@@ -142,6 +144,12 @@ class Program
         }
 
         return true;
+    }
+
+    private static void ChangeStats(Message message, ref Dictionary<string, int> requests)
+    {
+        if (!requests.Any(x => x.Key == message.Text)) requests.Add(message.Text, 1);
+        else requests[message.Text]++;
     }
 
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
@@ -367,6 +375,11 @@ class Program
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have cleared the bot.");
                             _users.Clear();
                             return;
+                        case "Статистика запросiв":
+                            string text = string.Empty;
+                            foreach (var item in _countOfRequests) text += $"Команда - {item.Key}. Кількість запросів - {item.Value}\n";
+                            await _client.SendTextMessageAsync(currentUser.ChatId, text, replyMarkup: Settings.GetAdminCommands());
+                            return;
                         case "Вийти":
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Ви вийшли з адмін акаунту", replyMarkup: new ReplyKeyboardRemove());
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have log out from account.");
@@ -390,23 +403,30 @@ class Program
                         case "/tabletime":
                             currentUser.State = Settings.UserState.EnterForm;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
+                            ChangeStats(message, ref _countOfRequests);     
                             return;
                         case "/today":
                             currentUser.State = Settings.UserState.EnterFormToday;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
+                            ChangeStats(message, ref _countOfRequests);
                             return;
                         case "/tomorrow":
                             currentUser.State = Settings.UserState.EnterFormTommorow;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
+                            ChangeStats(message, ref _countOfRequests);
                             return;
                         case "/bells":
                             SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\bells.png");
+                            ChangeStats(message, ref _countOfRequests);
                             return;
                         case "/teacher":
                             currentUser.State = Settings.UserState.EnterTeacher;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть прізвище");
+                            ChangeStats(message, ref _countOfRequests);
                             return;
                         case "/admin":
+                            ChangeStats(message, ref _countOfRequests);
+
                             if (currentUser.IsAdmin == true)
                             {
                                 currentUser.State = Settings.UserState.Admin;
@@ -427,6 +447,7 @@ class Program
                             return;
                         case "/clear":
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Очищення клавіатури", replyMarkup: new ReplyKeyboardRemove());
+                            ChangeStats(message, ref _countOfRequests);
                             return;
                         default:
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такої команди");

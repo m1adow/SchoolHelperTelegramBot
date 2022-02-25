@@ -72,6 +72,7 @@ namespace SchoolHelperTelegramBot.Models
                     new List<KeyboardButton>{ new KeyboardButton { Text = "Получити усiх вчителiв" } },
                     new List<KeyboardButton>{ new KeyboardButton { Text = "Перезагрузити бота" } },
                     new List<KeyboardButton>{ new KeyboardButton { Text = "Очистити пам'ять" } },
+                    new List<KeyboardButton> { new KeyboardButton { Text = "Статистика запросiв" } },
                     new List<KeyboardButton> { new KeyboardButton { Text = "Вийти" } }
                 }
             };
