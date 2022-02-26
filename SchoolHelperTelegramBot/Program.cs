@@ -32,6 +32,7 @@ class Program
 
     static void Main(string[] args)
     {
+        Console.WriteLine(DateTime.Now.DayOfWeek - 1);
         ConnectToDataBase(out _sqlConnection);
         _week = 1;
         _client = new TelegramBotClient(_token);
@@ -252,7 +253,7 @@ class Program
                 currentUser.Form = message.Text;
                 currentUser.State = Settings.UserState.Basic;
 
-                if (DateTime.Now.DayOfWeek + 1 == DayOfWeek.Saturday || DateTime.Now.DayOfWeek + 1 == DayOfWeek.Sunday)
+                if (DateTime.Now.DayOfWeek + 1 == DayOfWeek.Saturday || double.Parse((DateTime.Now.DayOfWeek + 1).ToString()) % 7 == 0)
                 {
                     await _client.SendTextMessageAsync(currentUser.ChatId, "Завтра вихідний", replyMarkup: new ReplyKeyboardRemove());
                     return;
@@ -403,7 +404,7 @@ class Program
                         case "/tabletime":
                             currentUser.State = Settings.UserState.EnterForm;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
-                            ChangeStats(message, ref _countOfRequests);     
+                            ChangeStats(message, ref _countOfRequests);
                             return;
                         case "/today":
                             currentUser.State = Settings.UserState.EnterFormToday;
@@ -439,10 +440,7 @@ class Program
                                     currentUser.State = Settings.UserState.AdminSignIn;
                                     await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть пароль");
                                 }
-                                else
-                                {
-                                    await _client.SendTextMessageAsync(currentUser.ChatId, "У вас більше не має можливості ввійти у цей аккаунт");
-                                }
+                                else await _client.SendTextMessageAsync(currentUser.ChatId, "У вас більше не має можливості ввійти у цей аккаунт");
                             }
                             return;
                         case "/clear":
