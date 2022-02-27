@@ -8,6 +8,7 @@ namespace SchoolHelperTelegramBot.Models
         {
             Admin = -1,
             Basic = 0,
+            Settings = 1,
             EnterForm = 10,
             EnterWeek = 11,
             EnterDay = 12,

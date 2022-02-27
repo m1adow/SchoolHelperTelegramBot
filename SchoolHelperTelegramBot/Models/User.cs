@@ -3,6 +3,7 @@
     internal class User
     {
         public long ChatId { get; set; }
+        public string? ConstantForm { get; set; }
         public string? Form { get; set; }
         public string? Week { get; set; }
         public string? Day { get; set; }

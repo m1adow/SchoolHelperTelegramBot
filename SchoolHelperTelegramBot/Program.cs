@@ -32,7 +32,6 @@ class Program
 
     static void Main(string[] args)
     {
-        Console.WriteLine(DateTime.Now.DayOfWeek - 1);
         ConnectToDataBase(out _sqlConnection);
         _week = 1;
         _client = new TelegramBotClient(_token);
@@ -147,6 +146,17 @@ class Program
         return true;
     }
 
+    private async static Task<bool> IsFormExist(TelegramBotClient? client, Models.User? user)
+    {
+        if (user.ConstantForm is null)
+        {
+            await client.SendTextMessageAsync(user.ChatId, "Вкажіть клас в налаштуваннях", replyMarkup: new ReplyKeyboardRemove());
+            return false;
+        }
+
+        return true;
+    }
+
     private static void ChangeStats(Message message, ref Dictionary<string, int> requests)
     {
         if (!requests.Any(x => x.Key == message.Text)) requests.Add(message.Text, 1);
@@ -177,12 +187,12 @@ class Program
             var message = e.Message;
             PrintLog(message, currentUser);
 
-            if (currentUser.State == Settings.UserState.EnterTeacher)
+            if (currentUser.State == Settings.UserState.Settings)
             {
-                if (message.Text != null)
-                    if (!GetTeacher(_client, _sqlConnection, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'").Result)
-                        return;
+                if (!IsFormRight(_client, message, currentUser).Result) return;
 
+                currentUser.ConstantForm = message.Text;
+                await _client.SendTextMessageAsync(currentUser.ChatId, $"Ви змінили свій клас на {currentUser.ConstantForm}", replyMarkup: new ReplyKeyboardRemove());
                 currentUser.State = Settings.UserState.Basic;
                 return;
             }
@@ -195,6 +205,16 @@ class Program
                 currentUser.State = Settings.UserState.EnterWeek;
 
                 await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть тиждень", replyMarkup: Settings.GetWeekButtons());
+                return;
+            }
+
+            if (currentUser.State == Settings.UserState.EnterTeacher)
+            {
+                if (message.Text != null)
+                    if (!GetTeacher(_client, _sqlConnection, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'").Result)
+                        return;
+
+                currentUser.State = Settings.UserState.Basic;
                 return;
             }
 
@@ -226,40 +246,6 @@ class Program
                 currentUser.State = Settings.UserState.Basic;
 
                 SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{_week}.png");
-                return;
-            }
-
-            if (currentUser.State == Settings.UserState.EnterFormToday)
-            {
-                if (!IsFormRight(_client, message, currentUser).Result) return;
-
-                currentUser.Form = message.Text;
-                currentUser.State = Settings.UserState.Basic;
-
-                if (DateTime.Now.DayOfWeek == DayOfWeek.Saturday || DateTime.Now.DayOfWeek == DayOfWeek.Sunday)
-                {
-                    await _client.SendTextMessageAsync(currentUser.ChatId, "Сьогодні вихідний", replyMarkup: new ReplyKeyboardRemove());
-                    return;
-                }
-
-                SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{DateTime.Now.DayOfWeek}_{_week}.png");
-                return;
-            }
-
-            if (currentUser.State == Settings.UserState.EnterFormTommorow)
-            {
-                if (!IsFormRight(_client, message, currentUser).Result) return;
-
-                currentUser.Form = message.Text;
-                currentUser.State = Settings.UserState.Basic;
-
-                if (DateTime.Now.DayOfWeek + 1 == DayOfWeek.Saturday || double.Parse((DateTime.Now.DayOfWeek + 1).ToString()) % 7 == 0)
-                {
-                    await _client.SendTextMessageAsync(currentUser.ChatId, "Завтра вихідний", replyMarkup: new ReplyKeyboardRemove());
-                    return;
-                }
-
-                SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{DateTime.Now.DayOfWeek + 1}_{_week}.png");
                 return;
             }
 
@@ -402,28 +388,50 @@ class Program
                     switch (message.Text)
                     {
                         case "/tabletime":
-                            currentUser.State = Settings.UserState.EnterForm;
-                            await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
                             ChangeStats(message, ref _countOfRequests);
+                            currentUser.State = Settings.UserState.EnterForm;
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть клас", replyMarkup: Settings.GetFormButtons());
                             return;
                         case "/today":
-                            currentUser.State = Settings.UserState.EnterFormToday;
-                            await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
                             ChangeStats(message, ref _countOfRequests);
+
+                            if (!IsFormExist(_client, currentUser).Result) return;
+
+                            if (DateTime.Now.DayOfWeek == DayOfWeek.Saturday || DateTime.Now.DayOfWeek == DayOfWeek.Sunday)
+                            {
+                                await _client.SendTextMessageAsync(currentUser.ChatId, "Сьогодні вихідний, отже тримайте на понеділок", replyMarkup: new ReplyKeyboardRemove());
+                                SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.ConstantForm}\Monday_{_week}.png");
+                                return;
+                            }
+
+                            SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.ConstantForm}\{DateTime.Now.DayOfWeek}_{_week}.png");
                             return;
                         case "/tomorrow":
-                            currentUser.State = Settings.UserState.EnterFormTommorow;
-                            await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
                             ChangeStats(message, ref _countOfRequests);
+
+                            if (!IsFormExist(_client, currentUser).Result) return;
+
+                            if (DateTime.Now.DayOfWeek + 1 == DayOfWeek.Saturday || DateTime.Now.DayOfWeek + 1 == DayOfWeek.Sunday)
+                            {
+                                await _client.SendTextMessageAsync(currentUser.ChatId, "Завтра вихідний, отже тримайте на понеділок", replyMarkup: new ReplyKeyboardRemove());
+                                SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.ConstantForm}\Monday_{_week}.png");
+                                return;
+                            }
+
+                            SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.ConstantForm}\{DateTime.Now.DayOfWeek + 1}_{_week}.png");
                             return;
                         case "/bells":
-                            SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\bells.png");
                             ChangeStats(message, ref _countOfRequests);
+                            SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\bells.png");
                             return;
                         case "/teacher":
+                            ChangeStats(message, ref _countOfRequests);
                             currentUser.State = Settings.UserState.EnterTeacher;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть прізвище");
-                            ChangeStats(message, ref _countOfRequests);
+                            return;
+                        case "/settings":
+                            currentUser.State = Settings.UserState.Settings;
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
                             return;
                         case "/admin":
                             ChangeStats(message, ref _countOfRequests);
