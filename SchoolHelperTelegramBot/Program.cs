@@ -15,6 +15,7 @@ class Program
     private static TelegramBotClient? _client;
     private static SqlConnection? _sqlConnection;
     private static readonly string _token = "5151427908:AAFbHUIvyt1NQrzpS7mTe3GQIG7TuZHLUY0";
+    private static string _password = "school5";
     private static byte _week;
 
     private static List<Models.User> _users = new();
@@ -37,7 +38,7 @@ class Program
         _client = new TelegramBotClient(_token);
         _client.StartReceiving();
         _client.OnMessage += OnMessageHandler;
-        Console.ReadKey();
+        Console.ReadLine();
     }
 
     private static void ConnectToDataBase(out SqlConnection? sqlConnection)
@@ -253,7 +254,7 @@ class Program
             {
                 if (currentUser.CountOfSignIn != 3)
                 {
-                    if (message.Text == "school5")
+                    if (message.Text == _password)
                     {
                         currentUser.State = Settings.UserState.Admin;
                         currentUser.IsAdmin = true;
@@ -276,6 +277,16 @@ class Program
                 return;
             }
 
+            if (currentUser.State == Settings.UserState.ChangePasswordAdmin)
+            {
+                if (message.Text is not null) _password = message.Text;
+
+                await _client.SendTextMessageAsync(currentUser.ChatId, $"Пароль змінен на {_password}", replyMarkup: Settings.GetAdminCommands());
+                PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have changed the password to \"{_password}\".");
+                currentUser.State = Settings.UserState.Admin;
+                return;
+            }
+
             if (currentUser.State == Settings.UserState.ChangeWeekAdmin)
             {
                 byte.TryParse(message.Text, out byte digit);
@@ -294,7 +305,6 @@ class Program
 
                 _week = digit;
                 await _client.SendTextMessageAsync(currentUser.ChatId, $"Неділя змінена на {_week}.", replyMarkup: Settings.GetAdminCommands());
-
                 PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have changed the week.");
                 currentUser.State = Settings.UserState.Admin;
                 return;
@@ -337,10 +347,12 @@ class Program
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть неділю", replyMarkup: new ReplyKeyboardRemove());
                             currentUser.State = Settings.UserState.ChangeWeekAdmin;
                             return;
-                        case "Змiнити розклад":
+                        case "Змiнити пароль":
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть новий пароль", replyMarkup: new ReplyKeyboardRemove());
+                            currentUser.State = Settings.UserState.ChangePasswordAdmin;
                             return;
                         case "Получити усiх вчителiв":
-                            GetTeacher(_client, _sqlConnection, currentUser, "SELECT Name, [E-Mail], Phone FROM Teacher");
+                            await GetTeacher(_client, _sqlConnection, currentUser, "SELECT Name, [E-Mail], Phone FROM Teacher");
                             return;
                         case "Додати вчителя":
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть i'мя вчителя", replyMarkup: new ReplyKeyboardRemove());
@@ -430,6 +442,7 @@ class Program
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть прізвище");
                             return;
                         case "/settings":
+                            ChangeStats(message, ref _countOfRequests);
                             currentUser.State = Settings.UserState.Settings;
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть клас", replyMarkup: Settings.GetFormButtons());
                             return;
@@ -453,7 +466,6 @@ class Program
                             return;
                         case "/clear":
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Очищення клавіатури", replyMarkup: new ReplyKeyboardRemove());
-                            ChangeStats(message, ref _countOfRequests);
                             return;
                         default:
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Не існує такої команди");
