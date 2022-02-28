@@ -374,14 +374,16 @@ class Program
                             currentUser.State = Settings.UserState.EnterTeacherNameForDeleteAdmin;
                             return;
                         case "Перезагрузити бота":
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Перезагрузка... Вас буде вилучено з адмін акаунту.", replyMarkup: new ReplyKeyboardRemove());
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have restarted the bot.");
                             _users.Clear();
-                            _client = new TelegramBotClient(_token);
+                            _client = new TelegramBotClient(_token); 
                             _client.OnMessage += OnMessageHandler;
                             _sqlConnection = null;
                             ConnectToDataBase(out _sqlConnection);
                             return;
                         case "Очистити пам'ять":
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Очищення пам'яті... Вас буде вилучено з адмін акаунту.", replyMarkup: new ReplyKeyboardRemove());
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have cleared the bot.");
                             _users.Clear();
                             return;
@@ -472,7 +474,7 @@ class Program
                                     currentUser.State = Settings.UserState.AdminSignIn;
                                     await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть пароль");
                                 }
-                                else await _client.SendTextMessageAsync(currentUser.ChatId, "У вас більше не має можливості ввійти у цей аккаунт");
+                                else await _client.SendTextMessageAsync(currentUser.ChatId, "У вас більше не має можливості ввійти у цей аккаунт.");
                             }
                             return;
                         case "/clear":
