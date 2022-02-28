@@ -12,7 +12,7 @@ namespace SchoolHelperTelegramBot.Models
             EnterForm = 10,
             EnterWeek = 11,
             EnterDay = 12,
-            EnterTeacher = 15,
+            EnterTeacher = 13,
             AdminSignIn = 20,
             ChangeWeekAdmin = 21,
             ChangePasswordAdmin = 22,

@@ -52,10 +52,7 @@ class Program
         Console.ForegroundColor = ConsoleColor.Gray;
     }
 
-    private static void PrintLog(Message message, Models.User? user)
-    {
-        Console.WriteLine($"{DateTime.Now.TimeOfDay} Message: {message.Text} From: {message.From.Username}({message.From.Id}) State: {user.State}");
-    }
+    private static void PrintLog(Message message, Models.User? user) => Console.WriteLine($"{DateTime.Now.TimeOfDay} Message: {message.Text} From: {message.From.Username}({message.From.Id}) State: {user.State}");
 
     private static void PrintAdminAct(string text)
     {
@@ -162,6 +159,19 @@ class Program
     {
         if (!requests.Any(x => x.Key == message.Text)) requests.Add(message.Text, 1);
         else requests[message.Text]++;
+    }
+
+    private static async void ClearAdmins(List<Models.User> users, TelegramBotClient? client)
+    {
+        foreach (Models.User user in users)
+        {
+            if (user.IsAdmin)
+            {
+                user.IsAdmin = false;
+                user.State = Settings.UserState.Basic;
+                await client.SendTextMessageAsync(user.ChatId, "Пароль від адмін акаунту був змінен. Увійдіть знову", replyMarkup: new ReplyKeyboardRemove());
+            }
+        }
     }
 
     private static async void OnMessageHandler(object? sender, MessageEventArgs e)
@@ -283,7 +293,8 @@ class Program
 
                 await _client.SendTextMessageAsync(currentUser.ChatId, $"Пароль змінен на {_password}", replyMarkup: Settings.GetAdminCommands());
                 PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have changed the password to \"{_password}\".");
-                currentUser.State = Settings.UserState.Admin;
+                ClearAdmins(_users, _client);
+                currentUser.State = Settings.UserState.Basic;
                 return;
             }
 
