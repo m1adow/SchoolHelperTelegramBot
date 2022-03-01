@@ -20,7 +20,7 @@ class Program
 
     private static List<Models.User> _users = new();
 
-    private static Dictionary<string, int> _countOfRequests = new();
+    private static Dictionary<string, double> _countOfRequests = new();
 
     private static Dictionary<string, string> _days = new()
     {
@@ -43,7 +43,8 @@ class Program
 
     private static void ConnectToDataBase(out SqlConnection? sqlConnection)
     {
-        sqlConnection = new SqlConnection($@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename={Environment.CurrentDirectory}\Resources\DataBase\School.mdf;Integrated Security=True");
+        //sqlConnection = new SqlConnection($@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename={Environment.CurrentDirectory}\Resources\DataBase\School.mdf;Integrated Security=True");
+        sqlConnection = new SqlConnection(@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=D:\study\codes VS\SchoolHelperTelegramBot\SchoolHelperTelegramBot\School.mdf;Integrated Security=True");
         sqlConnection.Open();
 
         Console.ForegroundColor = ConsoleColor.Magenta;
@@ -155,7 +156,7 @@ class Program
         return true;
     }
 
-    private static void ChangeStats(Message message, ref Dictionary<string, int> requests)
+    private static void ChangeStats(Message message, ref Dictionary<string, double> requests)
     {
         if (!requests.Any(x => x.Key == message.Text)) requests.Add(message.Text, 1);
         else requests[message.Text]++;
@@ -377,6 +378,7 @@ class Program
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Перезагрузка... Вас буде вилучено з адмін акаунту.", replyMarkup: new ReplyKeyboardRemove());
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have restarted the bot.");
                             _users.Clear();
+                            _countOfRequests.Clear();
                             _client = new TelegramBotClient(_token); 
                             _client.OnMessage += OnMessageHandler;
                             _sqlConnection = null;
@@ -389,7 +391,24 @@ class Program
                             return;
                         case "Статистика запросiв":
                             string text = string.Empty;
-                            foreach (var item in _countOfRequests) text += $"Команда - {item.Key}. Кількість запросів - {item.Value}\n";
+                            List<string> keys = new(_countOfRequests.Keys.Count);
+                            double countOfRequests = 0;
+
+                            foreach (var item in _countOfRequests)
+                            {
+                                keys.Add(item.Key);
+                                countOfRequests += item.Value;
+                                text += $"Команда - {item.Key}. Кількість запросів - {item.Value}\n";
+                            }
+
+                            text += $"\nЗагальна кількість запитів - {countOfRequests}\n";
+
+                            for (int i = 0; i < keys.Count; i++)
+                            {
+                                _countOfRequests.TryGetValue(keys[i], out double value);
+                                text += $"{keys[i]} - {Math.Round(value / countOfRequests * 100, 2)}%\n";
+                            }
+                           
                             await _client.SendTextMessageAsync(currentUser.ChatId, text, replyMarkup: Settings.GetAdminCommands());
                             return;
                         case "Вийти":
