@@ -15,14 +15,14 @@ class Program
     private static TelegramBotClient? _client;
     private static SqlConnection? _sqlConnection;
     private static readonly string _token = "5151427908:AAFbHUIvyt1NQrzpS7mTe3GQIG7TuZHLUY0";
-    private static string _password = "school5";
+    private static string? _password;
     private static byte _week;
 
-    private static List<Models.User> _users = new();
+    private static List<Models.User>? _users;
+    private static List<string>? _advices;
 
-    private static Dictionary<string, double> _countOfRequests = new();
-
-    private static Dictionary<string, string> _days = new()
+    private static Dictionary<string, double>? _countOfRequests;
+    private static readonly Dictionary<string, string> _days = new()
     {
         ["Понедiлок"] = "Monday",
         ["Вiвторок"] = "Tuesday",
@@ -33,12 +33,23 @@ class Program
 
     static void Main(string[] args)
     {
+        Start();
+        Console.ReadLine();
+    }
+
+    private static void Start()
+    {
         ConnectToDataBase(out _sqlConnection);
+
+        _users = new List<Models.User>();
+        _advices = new List<string>();
+        _countOfRequests = new Dictionary<string, double>();
+        _password = "school5";
         _week = 1;
+
         _client = new TelegramBotClient(_token);
         _client.StartReceiving();
         _client.OnMessage += OnMessageHandler;
-        Console.ReadLine();
     }
 
     private static void ConnectToDataBase(out SqlConnection? sqlConnection)
@@ -110,7 +121,7 @@ class Program
         return true;
     }
 
-    private static void ActWithTeacher(SqlConnection sqlConnection, Models.User? user, string request)
+    private static void ActWithTeacher(SqlConnection sqlConnection, string request)
     {
         try
         {
@@ -149,7 +160,7 @@ class Program
     {
         if (user.ConstantForm is null)
         {
-            await client.SendTextMessageAsync(user.ChatId, "Вкажіть клас в налаштуваннях", replyMarkup: new ReplyKeyboardRemove());
+            await client.SendTextMessageAsync(user.ChatId, "Вкажіть клас в налаштуваннях - /settings", replyMarkup: new ReplyKeyboardRemove());
             return false;
         }
 
@@ -209,6 +220,16 @@ class Program
                 return;
             }
 
+            if (currentUser.State == Settings.UserState.EnterTeacher)
+            {
+                if (message.Text != null)
+                    if (!GetTeacher(_client, _sqlConnection, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'").Result)
+                        return;
+
+                currentUser.State = Settings.UserState.Basic;
+                return;
+            }
+
             if (currentUser.State == Settings.UserState.EnterForm)
             {
                 if (!IsFormRight(_client, message, currentUser).Result) return;
@@ -217,16 +238,6 @@ class Program
                 currentUser.State = Settings.UserState.EnterWeek;
 
                 await _client.SendTextMessageAsync(currentUser.ChatId, "Виберіть тиждень", replyMarkup: Settings.GetWeekButtons());
-                return;
-            }
-
-            if (currentUser.State == Settings.UserState.EnterTeacher)
-            {
-                if (message.Text != null)
-                    if (!GetTeacher(_client, _sqlConnection, currentUser, $@"SELECT Name, [E-Mail], Phone FROM Teacher WHERE Name LIKE N'%{message.Text}%'").Result)
-                        return;
-
-                currentUser.State = Settings.UserState.Basic;
                 return;
             }
 
@@ -258,6 +269,20 @@ class Program
                 currentUser.State = Settings.UserState.Basic;
 
                 SendPhoto(_client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{_week}.png");
+                return;
+            }
+
+            if (currentUser.State == Settings.UserState.EnterAdvice)
+            {
+                if (message.Text is null)
+                {
+                    await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть текст", replyMarkup: new ReplyKeyboardRemove());
+                    return;
+                }
+
+                _advices.Add(message.Text);
+                await _client.SendTextMessageAsync(currentUser.ChatId, "Ваше побажання буде побачено", replyMarkup: new ReplyKeyboardRemove());
+                currentUser.State = Settings.UserState.Basic;
                 return;
             }
 
@@ -333,7 +358,7 @@ class Program
             if (currentUser.State == Settings.UserState.EnterTeacherEMailForAddAdmin)
             {
                 currentUser.TeacherEmail = message.Text;
-                ActWithTeacher(_sqlConnection, currentUser, $@"INSERT INTO Teacher (Name, [E-Mail]) VALUES (N'{currentUser.TeacherName}', N'{currentUser.TeacherEmail}')");
+                ActWithTeacher(_sqlConnection, $@"INSERT INTO Teacher (Name, [E-Mail]) VALUES (N'{currentUser.TeacherName}', N'{currentUser.TeacherEmail}')");
                 await _client.SendTextMessageAsync(currentUser.ChatId, $"Успішно добавлен учитель \"{currentUser.TeacherName}\" з поштою \"{currentUser.TeacherEmail}\"", replyMarkup: Settings.GetAdminCommands());
                 PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have added the teacher with name \"{currentUser.TeacherName}\" and with E-Mail \"{currentUser.TeacherEmail}\"");
                 currentUser.State = Settings.UserState.Admin;
@@ -342,7 +367,7 @@ class Program
 
             if (currentUser.State == Settings.UserState.EnterTeacherNameForDeleteAdmin)
             {
-                ActWithTeacher(_sqlConnection, currentUser, $"DELETE FROM Teacher WHERE Name LIKE N'{message.Text}'");
+                ActWithTeacher(_sqlConnection, $"DELETE FROM Teacher WHERE Name LIKE N'{message.Text}'");
                 await _client.SendTextMessageAsync(currentUser.ChatId, $"Успішно видален учитель \"{message.Text}\"", replyMarkup: Settings.GetAdminCommands());
                 PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have deleted the teacher with name \"{message.Text}\"");
                 currentUser.State = Settings.UserState.Admin;
@@ -377,20 +402,16 @@ class Program
                         case "Перезагрузити бота":
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Перезагрузка... Вас буде вилучено з адмін акаунту.", replyMarkup: new ReplyKeyboardRemove());
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have restarted the bot.");
-                            _users.Clear();
-                            _countOfRequests.Clear();
-                            _client = new TelegramBotClient(_token); 
-                            _client.OnMessage += OnMessageHandler;
-                            _sqlConnection = null;
-                            ConnectToDataBase(out _sqlConnection);
+                            Start();
                             return;
                         case "Очистити пам'ять":
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Очищення пам'яті... Вас буде вилучено з адмін акаунту.", replyMarkup: new ReplyKeyboardRemove());
                             PrintAdminAct($"Admin {message.From.Username}({message.From.Id}) have cleared the bot.");
                             _users.Clear();
+
                             return;
                         case "Статистика запросiв":
-                            string text = string.Empty;
+                            string stats = string.Empty;
                             List<string> keys = new(_countOfRequests.Keys.Count);
                             double countOfRequests = 0;
 
@@ -398,18 +419,36 @@ class Program
                             {
                                 keys.Add(item.Key);
                                 countOfRequests += item.Value;
-                                text += $"Команда - {item.Key}. Кількість запросів - {item.Value}\n";
+                                stats += $"Команда - {item.Key}. Кількість запросів - {item.Value}\n";
                             }
 
-                            text += $"\nЗагальна кількість запитів - {countOfRequests}\n";
+                            stats += $"\nЗагальна кількість запитів - {countOfRequests}\n";
 
                             for (int i = 0; i < keys.Count; i++)
                             {
                                 _countOfRequests.TryGetValue(keys[i], out double value);
-                                text += $"{keys[i]} - {Math.Round(value / countOfRequests * 100, 2)}%\n";
+                                stats += $"{keys[i]} - {Math.Round(value / countOfRequests * 100, 2)}%\n";
                             }
-                           
-                            await _client.SendTextMessageAsync(currentUser.ChatId, text, replyMarkup: Settings.GetAdminCommands());
+
+                            await _client.SendTextMessageAsync(currentUser.ChatId, stats, replyMarkup: Settings.GetAdminCommands());
+                            return;
+                        case "Получити всi побажання":
+                            if (_advices.Count == 0)
+                            {
+                                await _client.SendTextMessageAsync(currentUser.ChatId, "Побажань немає", replyMarkup: Settings.GetAdminCommands());
+                                return;
+                            }
+                            else
+                            {
+                                foreach (var item in _advices) await _client.SendTextMessageAsync(currentUser.ChatId, item, replyMarkup: new ReplyKeyboardRemove());
+
+                                await _client.SendTextMessageAsync(currentUser.ChatId, "Це все", replyMarkup: Settings.GetAdminCommands());
+                            }
+
+                            return;
+                        case "Видалити всі побажання":
+                            _advices.Clear();
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Успішно видалені всі побажання", replyMarkup: Settings.GetAdminCommands());
                             return;
                         case "Вийти":
                             await _client.SendTextMessageAsync(currentUser.ChatId, "Ви вийшли з адмін акаунту", replyMarkup: new ReplyKeyboardRemove());
@@ -471,7 +510,12 @@ class Program
                         case "/teacher":
                             ChangeStats(message, ref _countOfRequests);
                             currentUser.State = Settings.UserState.EnterTeacher;
-                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть прізвище");
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть прізвище", replyMarkup: new ReplyKeyboardRemove());
+                            return;
+                        case "/advice":
+                            ChangeStats(message, ref _countOfRequests);
+                            currentUser.State = Settings.UserState.EnterAdvice;
+                            await _client.SendTextMessageAsync(currentUser.ChatId, "Введіть ваше побажання", replyMarkup: new ReplyKeyboardRemove());
                             return;
                         case "/settings":
                             ChangeStats(message, ref _countOfRequests);
