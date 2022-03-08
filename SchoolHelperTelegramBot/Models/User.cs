@@ -29,6 +29,7 @@
         ChangePasswordAdmin = 22,
         EnterTeacherNameForAddAdmin = 23,
         EnterTeacherEMailForAddAdmin = 24,
-        EnterTeacherNameForDeleteAdmin = 25
+        EnterTeacherNameForDeleteAdmin = 25,
+        EnterAdAdmin = 26
     }
 }

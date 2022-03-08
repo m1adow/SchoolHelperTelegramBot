@@ -47,8 +47,8 @@ class Program
 
     private static void ConnectToDataBase(out SqlConnection? sqlConnection)
     {
-        //sqlConnection = new SqlConnection($@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename={Environment.CurrentDirectory}\Resources\DataBase\School.mdf;Integrated Security=True");
-        sqlConnection = new SqlConnection(@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=D:\study\codes VS\SchoolHelperTelegramBot\SchoolHelperTelegramBot\School.mdf;Integrated Security=True");
+        sqlConnection = new SqlConnection($@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename={Environment.CurrentDirectory}\Resources\DataBase\School.mdf;Integrated Security=True");
+        //sqlConnection = new SqlConnection(@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=D:\study\codes VS\SchoolHelperTelegramBot\SchoolHelperTelegramBot\School.mdf;Integrated Security=True");
         sqlConnection.Open();
 
         Console.ForegroundColor = ConsoleColor.Magenta;
@@ -255,7 +255,7 @@ class Program
                 currentUser.Day = day;
                 currentUser.State = UserState.Basic;
 
-                SendPhoto(_settings.Client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{_settings.Week}.png");
+                SendPhoto(_settings.Client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.Form}\{currentUser.Day}_{currentUser.Week}.png");
                 return;
             }
 
@@ -361,12 +361,30 @@ class Program
                 return;
             }
 
+            if (currentUser.State == UserState.EnterAdAdmin)
+            {
+                if (message.Text is null)
+                {
+                    await _settings.Client.SendTextMessageAsync(currentUser.ChatId, "Введіть текст", replyMarkup: new ReplyKeyboardMarkup());
+                    return;
+                }
+
+                _settings.Users.ForEach(async u => await _settings.Client.SendTextMessageAsync(u.ChatId, message.Text));
+                await _settings.Client.SendTextMessageAsync(currentUser.ChatId, "Успішно відправлено оголошення", replyMarkup: Buttons.AdminCommands());
+                currentUser.State = UserState.Admin;
+                return;
+            }
+
             if (currentUser.State == UserState.Admin)
             {
                 if (message.Text != null)
                 {
                     switch (message.Text)
                     {
+                        case "Зробити оголошення":
+                            await _settings.Client.SendTextMessageAsync(currentUser.ChatId, "Введіть текст з оголошенням", replyMarkup: new ReplyKeyboardRemove());
+                            currentUser.State = UserState.EnterAdAdmin;
+                            return;
                         case "Змiнити недiлю":
                             await _settings.Client.SendTextMessageAsync(currentUser.ChatId, "Введіть неділю", replyMarkup: new ReplyKeyboardRemove());
                             currentUser.State = UserState.ChangeWeekAdmin;
