@@ -498,7 +498,7 @@ class Program
 
                             if (!IsFormExist(_settings.Client, currentUser).Result) return;
 
-                            if (DateTime.Now.DayOfWeek + 1 == DayOfWeek.Saturday || DateTime.Now.DayOfWeek + 1 == DayOfWeek.Sunday)
+                            if (Convert.ToInt32(DateTime.Now.DayOfWeek + 1) == 6 || Convert.ToInt32(DateTime.Now.DayOfWeek + 1) == 7)
                             {
                                 await _settings.Client.SendTextMessageAsync(currentUser.ChatId, "Завтра вихідний, отже тримайте на понеділок", replyMarkup: new ReplyKeyboardRemove());
                                 SendPhoto(_settings.Client, currentUser, $@"{Environment.CurrentDirectory}\Resources\{currentUser.ConstantForm}\Monday_{_settings.Week}.png");
